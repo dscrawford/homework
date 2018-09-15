@@ -1,0 +1,128 @@
+daniel@ubuntu:~/Documents/CppPrograms$ emacs run.sh
+[?1049h[34l[?1h=[H[J[72;1H[K[?1l>[34h[?25h[?1049l[39;49m[?1049h[34l[?1h=[H[J[71;1H[?25l[3m-UUU:----F1  [0m[39;49m[23m[3m[1m*scratch*   [0m[39;49m[23m[3m   All L1     (Fundamental) --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------[0m[39;49m[23m
+M[H
+[34h[?25h[34l[72;1H[?25lLoading 00debian-vars...done[K[H
+[34h[?25h[34l[72;9H[?25l/etc/emacs/site-start.d/50dictionaries-common.el (source)...[H
+[34h[?25h[34l[72;9H[?25ldebian-ispell...[K[H
+[34h[?25h[34l[72;9H[?25l/var/cache/dictionaries-common/emacsen-ispell-default.el (source)...[H
+[34h[?25h[34l[72;77H[?25ldone[H
+[34h[?25h[34l[72;9H[?25ldebian-ispell...done[K[H
+[34h[?25h[34l[72;9H[?25l/var/cache/dictionaries-common/emacsen-ispell-dicts.el (source)...[H
+[34h[?25h[34l[72;75H[?25ldone[H
+[34h[?25h[34l[72;10H[?25letc/emacs/site-start.d/50dictionaries-common[6P[H
+[34h[?25h[34l[72;9H[?25lterm/xterm...[K[H
+[34h[?25h[34l[72;22H[?25ldone[H
+[34h[?25h[34l[72;1H[?25lFor information about GNU Emacs and the GNU system, type C-h C-a.[K[H
+[34h[?25h[34l[72;1H[?25lSetting up indent for shell type sh[K[H
+[34h[?25h[34l[72;1H[?25lIndentation variables are now local.[H
+[34h[?25h[34l[72;13H[?25lsetup for shell type sh[K[H
+[34h[?25h[34l[72;1H[?25lIndentation setup for shell type sh[K[H[3mFile Edit Options Buffers Tools Sh-Script Help                                                                                                                                                                                                                                 [0m[39;49m[23m
+M
+[33m#Made by Daniel Crawford(Email dsc160130@utdallas.edu) on 1/20/2018                                                                                                                                                                                                            [39;49m
+M
+[1m[34mrun_program[0m[39;49m() {[K
+    [1m[34mecho[0m[39;49m Running [32m'hw1'[39;49m with $[33m#[39;49m arguments:[K
+    ./hw1 $[33m@[39;49m >> stdout.txt 2>> stderr.txt[K
+    [1m[34mecho[0m[39;49m -e [32m"\tstdout appended to stdout.txt"[39;49m[K
+    [1m[34mecho[0m[39;49m -e [32m"\tstderr appended to stderr.txt"[39;49m[K
+}[K
+run_program[K
+run_program abc[K
+run_program a b c d e[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[3m-UU-:----F1  [0m[39;49m[23m[3m[1mrun.sh      [0m[39;49m[23m[3m   All L1     (Shell-script[sh]) ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------[0m[39;49m[23m
+M[H
+[34h[?25h[34l[72;1H[K[71;34H[?25l[3m2[0m[39;49m[23m[H
+
+[34h[?25h[34l[71;34H[?25l[3m3[0m[39;49m[23m[4;1H[34h[?25h[34l[C[C[C[C[C[C		[C[C[C[C[C[C		[C[C[C[C[C[C		[C[C[71;34H[?25l[3m4[0m[39;49m[23m[5;27H[34h[?25h[34l[71;34H[?25l[3m5[0m[39;49m[23m[6;27H[34h[?25h[34l[71;34H[?25l[3m4[0m[39;49m[23m[5;26H[34h[?25h[34l[C[?25l[1P[71;6H[3m**[0m[39;49m[23m[5;26H[34h[?25h[34l[?25l[1P[34h[?25h[34l[?25l[1P[34h[?25h[34l[?25l[1@l[34h[?25h[34l[?25l[1@o[34h[?25h[34l[?25l[1@g[34h[?25h[34l[C[C[C[C		[C[C[C[C[C[C		[C[K[K[K[?25ll[34h[?25h[34l[?25lo[34h[?25h[34l[?25lg[34h[?25h[34l[71;34H[?25l[3m5[0m[39;49m[23m[6;42H[34h[?25h[34l[C[C[C[?25l[32m"[39;49m[K[34h[?25h[34l[?25l[32m"[39;49m[K[34h[?25h[34l[?25l[32m"[39;49m[K[34h[?25h[34l[?25l[32ml"[39;49m[34h[?25h[34l[?25l[32mo"[39;49m[34h[?25h[34l[?25l[32mg"[39;49m[34h[?25h[34l[71;34H[?25l[3m6[0m[39;49m[23m[7;45H[34h[?25h[34l[?25l[32m"[39;49m[K[34h[?25h[34l[?25l[32m"[39;49m[K[34h[?25h[34l[?25l[32m"[39;49m[K[34h[?25h[34l[?25l[32ml"[39;49m[34h[?25h[34l[?25l[32mo"[39;49m[34h[?25h[34l[?25l[32mg"[39;49m[34h[?25h[34l[72;1H[?25lSaving file /home/daniel/Documents/CppPrograms/run.sh...[7;45H[34h[?25h[34l[72;1H[?25lWrote /home/daniel/Documents/CppPrograms/run.sh[K[7;45H[34h[?25h[34l[71;6H[?25l[3m--[0m[39;49m[23m[7;45H[34h[?25h[34l[72;1H[K[7;45H[72;1H[?25l(No files need saving)[7;45H[34h[?25h[34l[72;1H[K[?1l>[34h[?25h[?1049l[39;49mdaniel@ubuntu:~/Documents/CppPrograms$ ls
+[0m[01;32mcompile.sh[0m  [01;32mcompile.sh~[0m  file1.cc  file1.cc~  file1.o  file2.cc  file2.cc~  file2.o  [01;32mhw1[0m  [01;32mrun.sh[0m  [01;32mrun.sh~[0m  screenlog.0  screenlog1.0  screenlog2.0  stderr.txt  stdout.txt
+daniel@ubuntu:~/Documents/CppPrograms$ ./ru[K[Kcompile.sh
+Setting TEMPDIR environment variable to /scratch
+Compiling file1.cc
+Compiling file2.cc
+Linking files to create executable hw1
+Done
+daniel@ubuntu:~/Documents/CppPrograms$ ./run.sh
+Running hw1 with 0 arguments:
+	stdout appended to stdout.log
+	stderr appended to stderr.log
+Running hw1 with 1 arguments:
+	stdout appended to stdout.log
+	stderr appended to stderr.log
+Running hw1 with 5 arguments:
+	stdout appended to stdout.log
+	stderr appended to stderr.log
+daniel@ubuntu:~/Documents/CppPrograms$ ls
+[0m[01;32mcompile.sh[0m  [01;32mcompile.sh~[0m  file1.cc  file1.cc~  file1.o  file2.cc  file2.cc~  file2.o  [01;32mhw1[0m  [01;32mrun.sh[0m  [01;32mrun.sh~[0m  screenlog.0  screenlog1.0  screenlog2.0  stderr.log  stderr.txt  stdout.log  stdout.txt
+daniel@ubuntu:~/Documents/CppPrograms$ more stdout.txt[K[K[Klog
+argc was: 1
+./hw1
+argc was: 2
+./hw1
+abc
+argc was: 6
+./hw1
+a
+b
+c
+d
+e
+daniel@ubuntu:~/Documents/CppPrograms$ exit
