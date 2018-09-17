@@ -1,9 +1,12 @@
 #ifndef CPUINSTRUCT_H
 #define CPUINSTRUCT_H
 
-#include "meminstruct.h"
 #include <unistd.h>
 #include <memory>
+#include <string>
+#include <iostream>
+#include <cstdlib>
+#include <random>
 
 class CPU {
 private:
@@ -14,84 +17,135 @@ private:
   int AC;
   int X;
   int Y;
-  //Stack
-  int* userstck;
-  int* systemstck;
+
   //Checks whether interrupt is currently happening
   bool interruptState;
+
+  //Pipes for communicating with RAM
+  int* rampipe;
+  int* cpupipe;
+
+  //Size of stacks
   const static int SIZE = 2000;
 
-  void loadValue(int);    //Load the value into the AC
+  //Add value to stack
+  void addToStack();
+
+  //Pop a value from stack
+  int popStack();
+
+  //
+  //CPU Instructions
+  //
+
+  //Function for loading a value from RAM
+  void readVals(int&, int&);
+
+  //Load the value into the AC
+  void loadValue();
+
+  //Load the value at the address into the AC
+  void loadAddr();
+
+  //Load the value from the address found in the given address into the AC
+  void loadIndaddr();
   
-  void loadAddr(int*, int);   //Load the value at the address into the AC
+  //Load the value at(address+X) into the AC
+  void loadIdxXaddr();       
+
+  //Load the value at(address+Y) into the AC
+  void loadIdxYaddr();
+
+  //Load from (Sp+X) into the AC
+  void loadSpX();
+
+  //Store the value in the AC into the address
+  void storeAddr();          
+
+  //Gets a random int from 1 to 100 into the AC
+  void get();
+
+  //If port=1, writes AC as an int to the screen
+  //If port=2, writes AC as a char to the screen
+  void putPort();
+
+  //Add the value in X to the AC
+  void addX();
+
+  //Add the value in Y to the AC
+  void addY();              
+
+  //Subtract the value in X from the AC
+  void subX();
+
+  //Subtract the value in Y from the AC
+  void subY();               
+
+  //Copy the value in the AC to X
+  void copyToX();            
+
+  //Copy the value in X to the AC
+  void copyFromX();
+
+  //Copy the value in the AC to Y
+  void copyToY();
+
+  //Copy the value in Y to the AC
+  void copyFromY();          
+
+  //Copy the value in the AC to the SP
+  void copyToSP();           
+
+  //Copy the value in SP to the AC
+  void copyFromSP();         
+
+  //Jump to the addr
+  void JumpAddr();           
+
+  //Jump to the address only if the value in the AC=0
+  void JumpIfEqual();
+
+  //Jump to the address only if the value in the AC!=0
+  void JumpIfNotEqual();
   
-  void loadIndaddr();        //Load the value from the address found in the given
-                             //address into the AC
-  
-  void loadIdxXaddr();       //Load the value at(address+X) into the AC
-  
-  void loadIdxYaddr();       //Load the value at(address+Y) into the AC
-  
-  void loadSpX();            //Load from (Sp+X) into the AC
-  
-  void storeaddr();          //Store the value in the AC into the address
-  
-  void get();                //Gets a random int from 1 to 100 into the AC
-  
-  void putport();            //If port=1, writes AC as an int to the screen
-                             //If port=2, writes AC as a char to the screen
-  
-  void addX();               //Add the value in X to the AC
-  
-  void addY();               //Add the value in Y to the AC
-  
-  void subX();               //Subtract the value in X from the AC
-  
-  void subY();           //Subtract the value in Y from the AC
-  
-  void copyToX();        //Copy the value in the AC to X
-  
-  void copyFromX();      //Copy the value in X to the AC
-  
-  void copyToY();        //Copy the value in the AC to Y
-  
-  void copyFromY();      //Copy the value in Y to the AC
-  
-  void copyToSp();       //Copy the value in the AC to the SP
-  
-  void copyFromSp();     //Copy the value in SP to the AC
-  
-  void JumpAddr();       //Jump to the addr
-  
-  void JumpIfEqual();    //Jump to the address only if the value in the AC=0
-  
-  void JumpIfNotEqual(); //Jump to the address only if the value in the AC!=0
-  
-  void Call();           //Push return address onto stack, jump to the address
-  
-  void Ret();            //Pop return address from the stack, jump to the address
-  
-  void IncX();           //Increment the value in X
-  
-  void DecX();           //Decrement the value in X
-  
-  void Push();           //Push AC onto stack
-  
-  void Pop();            //Pop from stack into AC
-  
-  void Int();            //Perform system call
-  
-  void IRet();           //Return from system call
-  
-  void End();            //End execution
+  //Push return address onto stack, jump to the address
+  void Call();               
+
+  //Pop return address from the stack, jump to the address
+  void Ret();
+
+  //Increment the value in X
+  void IncX();               
+
+  //Decrement the value in X
+  void DecX();              
+
+  //Push AC onto stack
+  void Push();              
+
+  //Pop from stack into AC
+  void Pop();
+
+  //Perform system call
+  void Int();             
+
+  //Return from system call
+  void IRet();         
+
+  //End execution
+  void End();
+
+  //
+  //End CPU Instruction
+  //
+
 public:
-  CPU();
+  CPU(int* rampipe, int* cpupipe);
 
-  void runInstruct(int*, int);
+  void runInstruct(int);//Run an instruction
 
-  void getInstructs(int *, int);
+  void runProgram();//Run entire program
 
-  void addToStack(int);
   ~CPU();
 };
 

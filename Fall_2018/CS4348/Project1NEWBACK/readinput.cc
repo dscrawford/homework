@@ -13,15 +13,8 @@ std::string InputReader::read() {
 
   do {
     std::getline(file, line);
-
-    unsigned int i = 0;
-    //Read if it starts with a digit
-    if (line[0] ==  '.') {
-      ss << line[0];
-      i++;
-    }
-    //Read through string to get int
-    for ( ; i < line.size() && isdigit(line[i]) ; ++i) {
+     
+    for (unsigned int i = 0; i < line.size() && isdigit(line[i]) ; ++i) {
       ss << line[i];
     } 
   } while ( ss.str() == "" && !eof());

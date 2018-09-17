@@ -5,11 +5,11 @@
 #include <fstream>
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/wait.h>
 #include "readinput.h"
 #include "cpuinstruct.h"
 #include "meminstruct.h"
 
-void ramProcess(int, char**, int, int*, int*);
+void ramProcess(int, char**, int*, int*);
 void cpuProcess(int*, int*);
+void cpuInstructs(CPU &, int*, int);
 #endif

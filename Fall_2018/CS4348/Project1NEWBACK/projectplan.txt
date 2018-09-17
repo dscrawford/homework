@@ -1,0 +1,2 @@
+Need to fork the process, CPU and Memory are in two seperate processes.
+
