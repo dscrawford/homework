@@ -17,25 +17,23 @@ CPU::CPU(int* rampipe, int* cpupipe) {
 
 void CPU::runProgram() {
   //Get all instructions and data from file.
-  for (PC = 0; ; ++PC) {
-
-    usleep(1000);
+  for (PC = 0; ;++PC) {
     //Send what instruction CPU wants to read
     write(cpupipe[1], &(this->PC), sizeof(int));
 
     //get Instruction
     read(rampipe[0], &(this->IR), sizeof(int));
 
-
-    std::cout << "IR: " << IR << std::endl;
     //Run instruction
+    //std::cout << "IR: " << IR << std::endl;
     runInstruct(IR);
-    std::cout << std::endl;
   }
 }
 
 //Takes input incase needed for instruction
 void CPU::runInstruct(int IR) {
+  int isWrite = (IR == 7) ? 1 : 0;
+  write(cpupipe[1], &isWrite, sizeof(int));
   switch (IR) {
   case 1:
     loadValue();
@@ -134,9 +132,19 @@ void CPU::runInstruct(int IR) {
 
 void CPU::readVals(int& addr, int& val) {
   //Give Ram address
+  if (addr > 2000 || addr < 0) {
+    std::cerr << "ERROR: attempting to open address " << addr << " which is out"
+      " of range.(IR " << IR << ")" << std::endl;
+    _exit(1);
+  }
+  //Tell CPU that does not request a write
+  int isWrite = 0;
+  
   write(cpupipe[1], &addr, sizeof(int));
   //Read val
   read(rampipe[0], &val, sizeof(int));
+
+  write(cpupipe[1], &isWrite, sizeof(int));
 }
 
 //Instruction 1
@@ -186,6 +194,7 @@ void CPU::loadIdxYaddr() {
   //Get at this address in RAM
   adr += this->Y;
   readVals(adr, this->AC);
+
 }
 
 //Instruction 6
@@ -307,17 +316,10 @@ void CPU::JumpAddr() {
 
 //Instruction 21
 void CPU::JumpIfEqual() {
-  std::cout << "I'M OVER HERE" << std::endl;
   if (this->AC == 0) {
-    std::cout << "I'M JUMPING YAY" << std::endl;
     JumpAddr();
   }
   else {
-    std::cout << "I'M OVER HERE AT " << PC << std::endl;
-    //Otherwise, which tells RAM no input is expected
-    int temp = -1;
-    write(cpupipe[1], &temp, sizeof(int));
-    std::cout << "I JUST WROTE SOMETHING" << std::endl;
     PC++;
   }
 }
@@ -328,8 +330,6 @@ void CPU::JumpIfNotEqual() {
     JumpAddr();
   else {
     //Otherwise, which tells RAM no input is expected
-    int temp = -1;
-    write(cpupipe[1], &temp, sizeof(int));
     PC++;
   }
 }
@@ -338,13 +338,12 @@ void CPU::JumpIfNotEqual() {
 void CPU::Call() {
   addToStack();     // Current PC + Next Instruction - Index offset
   JumpAddr();
-
 }
 
 //Instruction 24
 void CPU::Ret() {
   //Jump back to instruction after call
-  this->PC = popStack();
+  this->PC = popStack() - 1; //popStack() - increment that jumpAddr will cause
   JumpAddr();
 }
 
@@ -379,7 +378,6 @@ void CPU::IRet() {
 //Instruction 50
 void CPU::End() {
   //end process
-  std::cout << std::endl;
   _exit(0);
 }
 
@@ -387,7 +385,7 @@ void CPU::End() {
 void CPU::addToStack() {
   //So CPU/RAM does not stall
   int temp;
-  readVals(temp, temp);
+  this->PC++;
   
   if (this->SP >= 0) {
     write(cpupipe[1], &(this->SP), sizeof(int));

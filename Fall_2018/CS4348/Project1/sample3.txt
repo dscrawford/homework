@@ -1,8 +1,66 @@
-1
-25
-23
-6
+23   // line one
+15
+23   // line two 
+30
+23   // line three 
+51
+23   // line four 
+86
+23   // line five 
+103
+23   // line six 
+142
+23   // line seven 
+163
 50
-9
+
+      // line one
+1    ld 4
+4         
+27   push
+23   call spaces 
+206
+28   remove parm 
+1    ld 6
+6         
+27   push
+23   call line
+178
+28   remove parm 
+23   call newline
+220
+24   return
+
+      // line two
 1
-24
+32
+9
+2
+1    ld /
+47
+9
+2
+1    ld 9
+9         
+27   push
+23   call spaces 
+206
+28   remove parm 
+1    load \ 
+92    
+9
+2
+23   call newline
+220
+24   return
+
+      // line three
+1    ld /
+47
+9    output
+2
+1    three spaces
+32
+9
+2
+9

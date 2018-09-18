@@ -22,6 +22,7 @@ void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
 	if (str[0] == '.') { //If string starts with period
 	  str.erase(0,1); //Erase period
 	  address = stoi(str); //Set new address
+
 	}
 	//Write instruction
 	else {
@@ -32,61 +33,32 @@ void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
     }
   }
   
-  int adr = 0, status, val;
-  bool isData = false;
+  int adr = 0, status, val, isWrite;
+  bool isData = false, isInstruction = false;
 
   //RAM watching for CPU requesting values
   while ( waitpid(-1, &status, WNOHANG) == 0) {
-    std::cout << "Checkpoint0" << std::endl;
     read(cpupipe[0], &adr, sizeof(int));
-    std::cout << "Checkpoint1" << std::endl;
-    if (adr >= 0) {
+    if (val >= 0) {
       val = ram.read(adr);
       write(rampipe[1], &val, sizeof(int));
+      //Check if instruction requires writing
+      read(cpupipe[0], &isWrite, sizeof(int));
+	if (isWrite == 1) {
+	  //Get next input
+	  read(cpupipe[0], &adr, sizeof(int));
+	  val = ram.read(adr);
+	  write(rampipe[1], &adr, sizeof(int));
+	  
+	  //Read where to store and what to store
+	  read(cpupipe[0], &adr, sizeof(int));
+	  read(cpupipe[0], &val, sizeof(int));
+	  ram.write(adr, val);
+	}
     }
-
-    if (!isData) {
-      std::cout << "Checkpoint2" << std::endl;
-      //Skip this if next input is Data
-      switch(val) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-      case 5:
-      case 9:
-      case 20:
-      case 21:
-      case 22:
-	isData = true;
-	break;
-      case 7:
-      case 23:
-      case 24:
-      case 27:
-      case 28:
-	//Read next line of input
-	read(cpupipe[0], &adr, sizeof(int));
-	val = ram.read(adr);
-	write(rampipe[1], &val, sizeof(int));
-	
-	//Read value and address to write it in
-	read(cpupipe[0], &adr, sizeof(int));
-	read(cpupipe[0], &val, sizeof(int));
-	ram.write(adr, val);
-	break;
-      case 50:
-	_exit(0);
-	break;
-      }
-    }
-    else {
-      std::cout << "Checkpoint3" << std::endl;
-      isData = false;
-    }
-    
-  }
+  } 
 }
+
 
 void cpuProcess(int* rampipe, int* cpupipe) {
   //Create object class cpu
