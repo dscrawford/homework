@@ -17,7 +17,7 @@ CPU::CPU(int* rampipe, int* cpupipe) {
 
 void CPU::runProgram() {
   //Get all instructions and data from file.
-  for (PC = 0; ;++PC) {
+  for (PC = 0; ; ) {
     //Send what instruction CPU wants to read
     write(cpupipe[1], &(this->PC), sizeof(int));
 
@@ -27,13 +27,16 @@ void CPU::runProgram() {
     //Run instruction
     //std::cout << "IR: " << IR << std::endl;
     runInstruct(IR);
+    PC++;
   }
 }
 
 //Takes input incase needed for instruction
 void CPU::runInstruct(int IR) {
+  //Inform RAM that CPU wants to write this instruction
   int isWrite = (IR == 7) ? 1 : 0;
   write(cpupipe[1], &isWrite, sizeof(int));
+  
   switch (IR) {
   case 1:
     loadValue();
@@ -137,52 +140,54 @@ void CPU::readVals(int& addr, int& val) {
       " of range.(IR " << IR << ")" << std::endl;
     _exit(1);
   }
-  //Tell CPU that does not request a write
-  int isWrite = 0;
-  
   write(cpupipe[1], &addr, sizeof(int));
   //Read val
   read(rampipe[0], &val, sizeof(int));
 
+  //Tell CPU that does not request a write
+  int isWrite = 0;
   write(cpupipe[1], &isWrite, sizeof(int));
 }
 
 //Instruction 1
 void CPU::loadValue() {
-  PC = PC + 1;
   readVals(this->PC, this->AC);
+  PC++;
 }
 
 //Instruction 2
 void CPU::loadAddr() {
   int adr;
-  PC = PC + 1;
+
   //Get address from RAM
   readVals(this->PC, adr);
   //Get new value of AC from RAM
   readVals(adr, this->AC);
   
+  PC++;
 }
 
 //Instruction 3
 void CPU::loadIndaddr() {
   int adr;
-  PC = PC + 1;
   //Get address from RAM
   readVals(this->PC, adr);
   //Store value at address into AC
   readVals(adr, this->AC);
+
+  PC++;
 }
 
 //Instruction 4
 void CPU::loadIdxXaddr() {
   int adr;
-  PC = PC + 1;
   //Get address from RAM
   readVals(this->PC, adr);
   //Get at this address in RAM
   adr += this->X;
   readVals(adr, this->AC);
+
+  PC++;
 }
 
 //Instruction 5
@@ -206,7 +211,6 @@ void CPU::loadSpX() {
 //Instruction 7
 void CPU::storeAddr() {
   int adr;
-  this->PC++;
   //Read the address from the next line
   write(cpupipe[1], &(this->PC), sizeof(int));
   read(rampipe[0], &adr, sizeof(int));
@@ -215,6 +219,8 @@ void CPU::storeAddr() {
   write(cpupipe[1], &(adr), sizeof(int));
   //send value in AC now to RAM
   write(cpupipe[1], &(this->AC), sizeof(int));
+
+  PC++;
 }
 
 //Instruction 8
@@ -242,6 +248,8 @@ void CPU::putPort() {
   else {
     std::cerr << "ERROR: Invalid port" << std::endl;
   }
+
+  PC++;
 }
 
 //Instruction 10
@@ -319,19 +327,16 @@ void CPU::JumpIfEqual() {
   if (this->AC == 0) {
     JumpAddr();
   }
-  else {
+  else //Otherwise, make sure to skip that next input
     PC++;
-  }
 }
 
 //Instruction 22
 void CPU::JumpIfNotEqual() {
   if (this->AC != 0)
     JumpAddr();
-  else {
-    //Otherwise, which tells RAM no input is expected
+  else //Otherwise, make sure to skip that next input
     PC++;
-  }
 }
 
 //Instruction 23
@@ -381,7 +386,6 @@ void CPU::End() {
   _exit(0);
 }
 
-
 void CPU::addToStack() {
   //So CPU/RAM does not stall
   int temp;
@@ -400,8 +404,8 @@ void CPU::addToStack() {
 }
 
 int CPU::popStack() {
-  //So CPU/RAM do not stall
   int temp, ret = 0;
+  //Read empty values to avoid deadlock
   readVals(temp, temp);
   
   if (SP < SIZE - 1) {
