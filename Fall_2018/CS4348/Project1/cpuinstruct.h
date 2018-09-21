@@ -31,9 +31,9 @@ private:
   int* cpupipe;
 
   //Size of stacks
-  const static int SIZE  = 2000;
-  const static int SYSTM = 1999;
-  const static int USER  = 999;
+  int SIZE;
+  int SYSTM;
+  int USER;
 
   void runInstruct(int);//Run an instruction
 

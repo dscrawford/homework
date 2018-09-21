@@ -30,15 +30,16 @@ void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
       }
     }
   }
-  int c = 5;
-  /*for (int i = 0; i < 2000; ++i) {
-    std::cout << "i: " << i << ", arr[i]: " << ram.read(i) << ", ";
+  /*int c = 5;
+  for (int i = 0; i < 2000; ++i) {
+    std::cout << "arr[" << i << "]: " << ram.read(i) << ", ";
     if (c == 0) {
       std::cout << std::endl;
       c = 5;
     }
     c--;
-    }*/
+    }
+  */
   int timer = stoi(std::string(argv[2]));
   write(rampipe[1], &timer, sizeof(int));
 
@@ -52,24 +53,28 @@ void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
   //RAM watching for CPU requesting values
   while ( waitpid(-1, &status, WNOHANG) == 0) {
     read(cpupipe[0], &adr, sizeof(int));
-
+    
     val = ram.read(adr);
     write(rampipe[1], &val, sizeof(int));
     //Check if instruction requires writing
     read(cpupipe[0], &isWrite, sizeof(int));
     if (isWrite == 1) {
       //Get next input
-      read(cpupipe[0], &adr, sizeof(int));
-      if (adr >= 0) {
-	val = ram.read(adr);
-	write(rampipe[1], &adr, sizeof(int));
+      int adr2;
+      read(cpupipe[0], &adr2, sizeof(int));
+      if (adr2 >= 0) {
+	val = ram.read(adr2);
+	std::cout << "GOT VAL " << val << std::endl;
+	write(rampipe[1], &val, sizeof(int));
       }
       //Read where to store and what to store
       read(cpupipe[0], &adr, sizeof(int));
+      std::cout << "WRITING ADDRESS " << adr << std::endl;
       read(cpupipe[0], &val, sizeof(int));
+      std::cout << "WRITING VAL " << val << std::endl;
       ram.write(adr, val);
     }
-  } 
+  }
 }
 
 

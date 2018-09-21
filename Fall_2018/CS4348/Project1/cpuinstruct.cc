@@ -1,11 +1,18 @@
 #include "cpuinstruct.h"
 
 CPU::CPU(int* rampipe, int* cpupipe) {
-  //Initialize variables and arrays;
+  //Initialize variables;
+  this->SIZE = 2000;
+  this->SYSTM = 1999;
+  this->USER = 999;
+
   this->SP = USER;
   this->AC = 0;
+  this->X = 0;
+  this->Y = 0;
   this->interruptState = false;
   this->kernelMode = false;
+  
   this->rampipe = rampipe;
   this->cpupipe = cpupipe;
   //Close unused pipes
@@ -25,10 +32,9 @@ void CPU::runProgram() {
     //get Instruction
     read(rampipe[0], &(this->IR), sizeof(int));
 
-    //std::cout << "IR: " << IR << ", PC: " << PC << ", IRSTATE: " << this->interruptState
+    //    std::cout << "IR: " << IR << ", PC: " << PC << ", IRSTATE: " << this->interruptState
     //      << ", AC: " << this->AC << std::endl;
     //Run instruction
-    usleep(1000);
     PC++;
     runInstruct(IR);
   }
@@ -134,11 +140,12 @@ void CPU::runInstruct(int IR) {
     End();
     break;
   }
-  curTime++;
+
   //If IR==0, restore the interrupt state.
-  if((curTime == timer && !interruptState) || (this->interruptState && IR == 0)){
+  if (curTime == timer && !interruptState)
     runInterrupt(1000);
-  }
+  if (!interruptState)
+    curTime++;
 }
 
 void CPU::runInterrupt(int PC) {
@@ -147,11 +154,13 @@ void CPU::runInterrupt(int PC) {
     this->PC = popStack();
     this->SP = popStack();
     this->kernelMode = false;
+
   }
   //If coming from interrupt
   else {
     this->kernelMode = true;
     int tempSP = SP;
+    SP = SYSTM;
     this->SP = this->SYSTM;
     addToStack(tempSP);
     addToStack(this->PC);
@@ -239,21 +248,17 @@ void CPU::loadIdxYaddr() {
 //Instruction 6
 void CPU::loadSpX() {
   int adr = this->SP + this->X;
-  readVals(adr, this->AC);
-
-  PC++;
+  readVals(adr, this->AC);  
 }
 
 //Instruction 7
-void CPU::storeAddr() {
+void CPU::storeAddr() { 
   //Request write process from RAM
-  int isWrite = 1;
-  write(cpupipe[1], &isWrite, sizeof(int));
   int adr;
   //Read the address from the next line
   write(cpupipe[1], &(this->PC), sizeof(int));
   read(rampipe[0], &adr, sizeof(int));
-  
+  std::cout << "CPU GOT ADR: " << adr << std::endl;
   //send address
   write(cpupipe[1], &(adr), sizeof(int));
   //send value in AC now to RAM
@@ -410,13 +415,15 @@ void CPU::Pop() {
 
 //Instruction 29
 void CPU::Int() {
-  runInterrupt(1500);
+  if(!interruptState)
+    runInterrupt(1500);
 }
 
 //Instruction 30
 void CPU::IRet() {
   //Will revert interrupt back to the way it was.
-  runInterrupt(0);
+  if (interruptState)
+    runInterrupt(0);
 }
 
 //Instruction 50
@@ -447,6 +454,7 @@ void CPU::addToStack(int input) {
 }
 
 int CPU::popStack() {
+
   int val;
   //Simply increment the stack pointer, the data will remain there but
   //will be overwritten on next addToStack
