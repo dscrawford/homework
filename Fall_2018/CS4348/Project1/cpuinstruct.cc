@@ -1,13 +1,11 @@
 #include "cpuinstruct.h"
 
-
 CPU::CPU(int* rampipe, int* cpupipe) {
   //Initialize variables and arrays;
-  this->PC = this->SIZE - 1;
-  this->SP = this->SIZE - 1;
+  this->SP = USER;
   this->AC = 0;
-  this->interruptState=false;
-
+  this->interruptState = false;
+  this->kernelMode = false;
   this->rampipe = rampipe;
   this->cpupipe = cpupipe;
   //Close unused pipes
@@ -17,26 +15,30 @@ CPU::CPU(int* rampipe, int* cpupipe) {
 
 void CPU::runProgram() {
   //Get all instructions and data from file.
-  for (PC = 0; ; ) {
+  read(rampipe[0], &(this->timer), sizeof(int));
+  curTime = 0;
+
+  //Enter program execution loop
+  for (PC = 0; ;) {
     //Send what instruction CPU wants to read
     write(cpupipe[1], &(this->PC), sizeof(int));
-
     //get Instruction
     read(rampipe[0], &(this->IR), sizeof(int));
 
+    //std::cout << "IR: " << IR << ", PC: " << PC << ", IRSTATE: " << this->interruptState
+    //      << ", AC: " << this->AC << std::endl;
     //Run instruction
-    //std::cout << "IR: " << IR << std::endl;
-    runInstruct(IR);
+    usleep(1000);
     PC++;
+    runInstruct(IR);
   }
 }
 
 //Takes input incase needed for instruction
 void CPU::runInstruct(int IR) {
-  //Inform RAM that CPU wants to write this instruction
   int isWrite = (IR == 7) ? 1 : 0;
   write(cpupipe[1], &isWrite, sizeof(int));
-  
+  //Inform RAM that CPU wants to write this instruction
   switch (IR) {
   case 1:
     loadValue();
@@ -123,28 +125,60 @@ void CPU::runInstruct(int IR) {
     Pop();
     break;
   case 29:
+    Int();
     break;
   case 30:
+    IRet();
     break;
   case 50:
     End();
     break;
   }
+  curTime++;
+  //If IR==0, restore the interrupt state.
+  if((curTime == timer && !interruptState) || (this->interruptState && IR == 0)){
+    runInterrupt(1000);
+  }
 }
 
-
+void CPU::runInterrupt(int PC) {
+  //If reverting back from interrupt
+  if (this->interruptState) {
+    this->PC = popStack();
+    this->SP = popStack();
+    this->kernelMode = false;
+  }
+  //If coming from interrupt
+  else {
+    this->kernelMode = true;
+    int tempSP = SP;
+    this->SP = this->SYSTM;
+    addToStack(tempSP);
+    addToStack(this->PC);
+    this->PC = PC;
+  }
+  //Invert the boolean value
+  this->interruptState = !(this->interruptState);
+  curTime = 0;
+}
 void CPU::readVals(int& addr, int& val) {
   //Give Ram address
-  if (addr > 2000 || addr < 0) {
+  if (addr > SIZE - 1 || addr < 0) {
     std::cerr << "ERROR: attempting to open address " << addr << " which is out"
       " of range.(IR " << IR << ")" << std::endl;
     _exit(1);
   }
+  if (addr > USER && !kernelMode) {
+    std::cerr << "ERROR: attempting to open address " << addr << " which is in"
+      " system stack.(IR " << IR << ")" << std::endl;
+    _exit(1);
+  }
+  
   write(cpupipe[1], &addr, sizeof(int));
   //Read val
   read(rampipe[0], &val, sizeof(int));
 
-  //Tell CPU that does not request a write
+  //Tell RAM that does not request a write
   int isWrite = 0;
   write(cpupipe[1], &isWrite, sizeof(int));
 }
@@ -158,7 +192,6 @@ void CPU::loadValue() {
 //Instruction 2
 void CPU::loadAddr() {
   int adr;
-
   //Get address from RAM
   readVals(this->PC, adr);
   //Get new value of AC from RAM
@@ -169,11 +202,12 @@ void CPU::loadAddr() {
 
 //Instruction 3
 void CPU::loadIndaddr() {
-  int adr;
+  int adr, adr2;
   //Get address from RAM
   readVals(this->PC, adr);
   //Store value at address into AC
-  readVals(adr, this->AC);
+  readVals(adr, adr2);
+  readVals(adr2, this->AC);
 
   PC++;
 }
@@ -193,23 +227,28 @@ void CPU::loadIdxXaddr() {
 //Instruction 5
 void CPU::loadIdxYaddr() {
   int adr;
-  PC = PC + 1;
   //Get address from RAM
   readVals(this->PC, adr);
   //Get at this address in RAM
   adr += this->Y;
   readVals(adr, this->AC);
 
+  PC++;
 }
 
 //Instruction 6
 void CPU::loadSpX() {
   int adr = this->SP + this->X;
   readVals(adr, this->AC);
+
+  PC++;
 }
 
 //Instruction 7
 void CPU::storeAddr() {
+  //Request write process from RAM
+  int isWrite = 1;
+  write(cpupipe[1], &isWrite, sizeof(int));
   int adr;
   //Read the address from the next line
   write(cpupipe[1], &(this->PC), sizeof(int));
@@ -235,7 +274,6 @@ void CPU::get() {
 //Instruction 9
 void CPU::putPort() {
   int input;
-  PC++;
   readVals(this->PC, input);
   //To pring integer to screen
   if (input == 1) {
@@ -247,6 +285,7 @@ void CPU::putPort() {
   }
   else {
     std::cerr << "ERROR: Invalid port" << std::endl;
+    _exit(1);
   }
 
   PC++;
@@ -314,19 +353,17 @@ void CPU::copyFromSP() {
 
 //Instruction 20
 void CPU::JumpAddr() {
-  this->PC = this->PC + 1;
   int adr;
   //get Address from RAM
   readVals(this->PC, adr);
-  this->PC = adr - 1;
-  //Udate and Decrement address to adjust for 0 index offset
+  this->PC = adr;
+  //Update address
 }
 
 //Instruction 21
 void CPU::JumpIfEqual() {
-  if (this->AC == 0) {
+  if (this->AC == 0)
     JumpAddr();
-  }
   else //Otherwise, make sure to skip that next input
     PC++;
 }
@@ -341,15 +378,14 @@ void CPU::JumpIfNotEqual() {
 
 //Instruction 23
 void CPU::Call() {
-  addToStack();     // Current PC + Next Instruction - Index offset
+  addToStack(this->PC);     // Current PC + Next Instruction
   JumpAddr();
 }
 
 //Instruction 24
 void CPU::Ret() {
   //Jump back to instruction after call
-  this->PC = popStack() - 1; //popStack() - increment that jumpAddr will cause
-  JumpAddr();
+  this->PC = popStack();
 }
 
 //Instruction 25
@@ -364,7 +400,7 @@ void CPU::DecX() {
 
 //Instruction 27
 void CPU::Push() {
-  addToStack();
+  addToStack(this->AC);
 }
 
 //Instruction 28
@@ -374,10 +410,13 @@ void CPU::Pop() {
 
 //Instruction 29
 void CPU::Int() {
+  runInterrupt(1500);
 }
 
 //Instruction 30
 void CPU::IRet() {
+  //Will revert interrupt back to the way it was.
+  runInterrupt(0);
 }
 
 //Instruction 50
@@ -386,14 +425,18 @@ void CPU::End() {
   _exit(0);
 }
 
-void CPU::addToStack() {
-  //So CPU/RAM does not stall
-  int temp;
-  this->PC++;
-  
+void CPU::addToStack(int input) {
+  int temp = -1, isWrite = 1;
+  //dummy values
+  write(cpupipe[1], &temp, sizeof(int));
+  read(rampipe[0], &temp, sizeof(int));
+
+  //Ignore the read, want to write
+  write(cpupipe[1], &isWrite, sizeof(int));
+  write(cpupipe[1], &temp, sizeof(int));
   if (this->SP >= 0) {
     write(cpupipe[1], &(this->SP), sizeof(int));
-    write(cpupipe[1], &(this->AC), sizeof(int));
+    write(cpupipe[1], &input, sizeof(int));
     this->SP--;
   }
   else {
@@ -404,21 +447,19 @@ void CPU::addToStack() {
 }
 
 int CPU::popStack() {
-  int temp, ret = 0;
-  //Read empty values to avoid deadlock
-  readVals(temp, temp);
-  
-  if (SP < SIZE - 1) {
+  int val;
+  //Simply increment the stack pointer, the data will remain there but
+  //will be overwritten on next addToStack
+  if (SP < SIZE) {
     this->SP++;
-    write(cpupipe[1], &(this->SP), sizeof(int));
-    write(cpupipe[1], &(this->AC), sizeof(int));
+    readVals(this->SP, val);
   }
   else {
     std::cerr << "ERROR: Stack is empty, cannot pop(Current instruction:)"
 	      << IR << std::endl;
     _exit(1);
   }
-  return ret;
+  return val;
 }
 
 CPU::~CPU() {}

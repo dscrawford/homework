@@ -3,7 +3,8 @@
 InputReader::InputReader(std::string FILENAME) {
   file.open(FILENAME, std::ios::in);
   if (!file) {
-    //do something
+    std::cerr << "ERROR: unable to open input file" << std::endl;
+    _exit(1);
   }
 }
 

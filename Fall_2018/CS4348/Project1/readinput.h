@@ -5,6 +5,8 @@
 #include <string>
 #include <sstream>
 #include <stdio.h>
+#include <unistd.h>
+#include <iostream>
 
 class InputReader { 
  private:

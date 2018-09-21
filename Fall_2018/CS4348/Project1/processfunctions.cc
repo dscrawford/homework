@@ -12,49 +12,62 @@ void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
   //Read every file in argv and then read all of those files
   //Start at arguments after the executable
   int address = 0;
-  for (int i = 1; i < argc; ++i) {
-    //Inputreader gives input until
-    InputReader file(argv[i]);
-    while (!file.eof()) {
-      std::string str;
-      if ( (str = file.read()) != "NULL" ) {
-	//Write where data starts
-	if (str[0] == '.') { //If string starts with period
-	  str.erase(0,1); //Erase period
-	  address = stoi(str); //Set new address
+  //Inputreader gives input until
 
-	}
-	//Write instruction
-	else {
-	  ram.write(address, stoi(str));
-	  address++;
-	}
+  InputReader file(argv[1]);
+  while (!file.eof()) {
+    std::string str;
+    if ( (str = file.read()) != "NULL" ) {
+      //Write where data starts
+      if (str[0] == '.') { //If string starts with period
+	str.erase(0,1); //Erase period
+	address = stoi(str); //Set new address	
+      }
+      //Write instruction
+      else {
+	ram.write(address, stoi(str));
+	address++;
       }
     }
   }
+  int c = 5;
+  /*for (int i = 0; i < 2000; ++i) {
+    std::cout << "i: " << i << ", arr[i]: " << ram.read(i) << ", ";
+    if (c == 0) {
+      std::cout << std::endl;
+      c = 5;
+    }
+    c--;
+    }*/
+  int timer = stoi(std::string(argv[2]));
+  write(rampipe[1], &timer, sizeof(int));
+
   
+
+  //Get the number of instructions to run before an interrupt
+
+  //Write to CPU
   int adr = 0, status, val, isWrite;
-  bool isData = false, isInstruction = false;
 
   //RAM watching for CPU requesting values
   while ( waitpid(-1, &status, WNOHANG) == 0) {
     read(cpupipe[0], &adr, sizeof(int));
-    if (val >= 0) {
-      val = ram.read(adr);
-      write(rampipe[1], &val, sizeof(int));
-      //Check if instruction requires writing
-      read(cpupipe[0], &isWrite, sizeof(int));
-	if (isWrite == 1) {
-	  //Get next input
-	  read(cpupipe[0], &adr, sizeof(int));
-	  val = ram.read(adr);
-	  write(rampipe[1], &adr, sizeof(int));
-	  
-	  //Read where to store and what to store
-	  read(cpupipe[0], &adr, sizeof(int));
-	  read(cpupipe[0], &val, sizeof(int));
-	  ram.write(adr, val);
-	}
+
+    val = ram.read(adr);
+    write(rampipe[1], &val, sizeof(int));
+    //Check if instruction requires writing
+    read(cpupipe[0], &isWrite, sizeof(int));
+    if (isWrite == 1) {
+      //Get next input
+      read(cpupipe[0], &adr, sizeof(int));
+      if (adr >= 0) {
+	val = ram.read(adr);
+	write(rampipe[1], &adr, sizeof(int));
+      }
+      //Read where to store and what to store
+      read(cpupipe[0], &adr, sizeof(int));
+      read(cpupipe[0], &val, sizeof(int));
+      ram.write(adr, val);
     }
   } 
 }

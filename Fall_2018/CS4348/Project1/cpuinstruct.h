@@ -20,26 +20,37 @@ private:
 
   //Checks whether interrupt is currently happening
   bool interruptState;
+  //How many instructions to run before interrupt
+  int timer;
+  int curTime;
 
+  bool kernelMode;
+  
   //Pipes for communicating with RAM
   int* rampipe;
   int* cpupipe;
 
   //Size of stacks
-  const static int SIZE = 2000;
+  const static int SIZE  = 2000;
+  const static int SYSTM = 1999;
+  const static int USER  = 999;
+
+  void runInstruct(int);//Run an instruction
+
+  void runInterrupt(int);//Run interrupt state
 
   //Add value to stack
-  void addToStack();
+  void addToStack(int);
 
   //Pop a value from stack
   int popStack();
 
+  //Function for loading a value from RAM
+  void readVals(int&, int&);
+
   //
   //CPU Instructions
   //
-
-  //Function for loading a value from RAM
-  void readVals(int&, int&);
 
   //Load the value into the AC
   void loadValue();
@@ -141,8 +152,6 @@ private:
 
 public:
   CPU(int* rampipe, int* cpupipe);
-
-  void runInstruct(int);//Run an instruction
 
   void runProgram();//Run entire program
 
