@@ -2,7 +2,7 @@ PROJECT_NAME=project1_dsc160130
 EXEC=$(PROJECT_NAME)
 CXX=g++
 CPP=g++
-CXXFLAGS=-Wall
+CXXFLAGS=-std=c++11 -Wall -pedantic
 OBJS=$(PROJECT_NAME).cc readinput.cc meminstruct.cc cpuinstruct.cc processfunctions.cc
 
 all: $(EXEC)
@@ -30,4 +30,4 @@ clean:
 	rm -f *~ *.o *\# $(PROJECT_NAME)
 
 $(EXEC): $(OBJS)
-	g++ -Wall -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^
