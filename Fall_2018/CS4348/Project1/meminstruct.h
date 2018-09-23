@@ -11,6 +11,7 @@ class RAM {
   RAM();
   int read(int);
   void write(int, int);
+  ~RAM();
 };
 
 #endif // MEMINSTURCT_H

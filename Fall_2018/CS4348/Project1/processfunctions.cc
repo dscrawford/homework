@@ -2,9 +2,6 @@
 void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
   //Create object class ram
   RAM ram;
-  //instruction count
-
-
   //Close unused pipes
   close(rampipe[0]);
   close(cpupipe[1]);
@@ -14,11 +11,12 @@ void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
   int address = 0;
   //Inputreader gives input until
 
+  //Read the file and initialize ram
   InputReader file(argv[1]);
   while (!file.eof()) {
     std::string str;
     if ( (str = file.read()) != "NULL" ) {
-      //Write where data starts
+      //Load new address.
       if (str[0] == '.') { //If string starts with period
 	str.erase(0,1); //Erase period
 	address = stoi(str); //Set new address	
@@ -30,49 +28,48 @@ void ramProcess(int argc, char** argv, pid_t pid, int* rampipe, int* cpupipe) {
       }
     }
   }
-  /*int c = 5;
-  for (int i = 0; i < 2000; ++i) {
-    std::cout << "arr[" << i << "]: " << ram.read(i) << ", ";
-    if (c == 0) {
-      std::cout << std::endl;
-      c = 5;
-    }
-    c--;
-    }
-  */
-  int timer = stoi(std::string(argv[2]));
+
+  int timer;
+  //Get the number of instructions to run before an interrupt, if none provided
+  //default to 10
+  if (argc == 3)
+    timer = stoi(std::string(argv[2]));
+  else
+    timer = 10;
   write(rampipe[1], &timer, sizeof(int));
 
-  
-
-  //Get the number of instructions to run before an interrupt
-
   //Write to CPU
-  int adr = 0, status, val, isWrite;
+  int adr = 0, val, type;
 
-  //RAM watching for CPU requesting values
-  while ( waitpid(-1, &status, WNOHANG) == 0) {
+  //RAM watching for CPU requesting reads and writes.
+  while (true) {
+    //Get address of where to read from CPU
     read(cpupipe[0], &adr, sizeof(int));
-    
+
+    //Fetch instruction
     val = ram.read(adr);
     write(rampipe[1], &val, sizeof(int));
-    //Check if instruction requires writing
-    read(cpupipe[0], &isWrite, sizeof(int));
-    if (isWrite == 1) {
-      //Get next input
+
+    //Check if instruction requires writing, otherwise next iteration.
+    read(cpupipe[0], &type, sizeof(int));
+    //Write type
+    if (type == 1) {
+      //Get next line possibly, if negative skip
       int adr2;
       read(cpupipe[0], &adr2, sizeof(int));
       if (adr2 >= 0) {
 	val = ram.read(adr2);
-	std::cout << "GOT VAL " << val << std::endl;
 	write(rampipe[1], &val, sizeof(int));
       }
       //Read where to store and what to store
       read(cpupipe[0], &adr, sizeof(int));
-      std::cout << "WRITING ADDRESS " << adr << std::endl;
       read(cpupipe[0], &val, sizeof(int));
-      std::cout << "WRITING VAL " << val << std::endl;
+      //Write to memory.
       ram.write(adr, val);
+    }
+    //Exit type
+    if (type == 2) {
+      break;
     }
   }
 }

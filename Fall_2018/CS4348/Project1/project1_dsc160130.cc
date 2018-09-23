@@ -1,10 +1,10 @@
 #include "project1_dsc160130.h"
 
 int main(int argc, char** argv) {
-  //Only execute if two 
-  if (argc < 2) {
-    std::cout << "ERROR: Need to supply arguments after executable "
-	      << "(EX: ./program1_dsc160130 sample.txt sample2.txt)" << std::endl;
+  //Only execute if two or three arguments. If only 2, default to 10 for timer
+  if (argc != 2 && argc != 3) {
+    std::cout << "ERROR: Invalid arguments, need input file then timer"
+	      << "(EX: ./program1_dsc160130 sample.txt 10)" << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -24,12 +24,12 @@ int main(int argc, char** argv) {
   pid_t pid = fork();
   if (pid > 0) {
     //parent process
-    ramProcess(argc, argv, pid, rampipe, cpupipe);
+    cpuProcess(rampipe, cpupipe);
     return 0;
   }
   else if (pid == 0) {
     //child process
-    cpuProcess(rampipe, cpupipe);
+    ramProcess(argc, argv, pid, rampipe, cpupipe);
     return 0;
   }
   else {
@@ -37,6 +37,5 @@ int main(int argc, char** argv) {
     std::cout << "fork failed" << std::endl;
     return 1;
   }
-  
   return 0;
 }

@@ -32,18 +32,23 @@ void CPU::runProgram() {
     //get Instruction
     read(rampipe[0], &(this->IR), sizeof(int));
 
-    //    std::cout << "IR: " << IR << ", PC: " << PC << ", IRSTATE: " << this->interruptState
-    //      << ", AC: " << this->AC << std::endl;
     //Run instruction
     PC++;
     runInstruct(IR);
+
+    //Break if IR==50
+    if (IR == 50)
+      break;
   }
 }
 
 //Takes input incase needed for instruction
 void CPU::runInstruct(int IR) {
-  int isWrite = (IR == 7) ? 1 : 0;
-  write(cpupipe[1], &isWrite, sizeof(int));
+  //Write type if the IR does not want to exit
+  if (IR != 50) {
+    int isWrite = (IR == 7) ? 1 : 0;
+    write(cpupipe[1], &isWrite, sizeof(int));
+  }
   //Inform RAM that CPU wants to write this instruction
   switch (IR) {
   case 1:
@@ -144,6 +149,7 @@ void CPU::runInstruct(int IR) {
   //If IR==0, restore the interrupt state.
   if (curTime == timer && !interruptState)
     runInterrupt(1000);
+  //Increment if running current program
   if (!interruptState)
     curTime++;
 }
@@ -154,7 +160,6 @@ void CPU::runInterrupt(int PC) {
     this->PC = popStack();
     this->SP = popStack();
     this->kernelMode = false;
-
   }
   //If coming from interrupt
   else {
@@ -190,6 +195,45 @@ void CPU::readVals(int& addr, int& val) {
   //Tell RAM that does not request a write
   int isWrite = 0;
   write(cpupipe[1], &isWrite, sizeof(int));
+}
+
+
+void CPU::addToStack(int input) {
+  int temp = -1, isWrite = 1;
+  //dummy values
+  write(cpupipe[1], &temp, sizeof(int));
+  read(rampipe[0], &temp, sizeof(int));
+
+  //Ignore the read, want to write
+  write(cpupipe[1], &isWrite, sizeof(int));
+  write(cpupipe[1], &temp, sizeof(int));
+  if (this->SP >= 0) {
+    write(cpupipe[1], &(this->SP), sizeof(int));
+    write(cpupipe[1], &input, sizeof(int));
+    this->SP--;
+  }
+  else {
+    std::cerr << "ERROR: Stack is full, cannot add(Current instruction:"
+	      << IR << ")" << std::endl;
+    _exit(1);
+  }
+}
+
+int CPU::popStack() {
+  int val;
+  //Simply increment the stack pointer, the data will remain there but
+  //will be overwritten on next addToStack
+  if (SP < SIZE) {
+    this->SP++;
+    readVals(this->SP, val);
+  }
+  //Otherwise throw error and inform stack is empty.
+  else {
+    std::cerr << "ERROR: Stack is empty, cannot pop(Current instruction:)"
+	      << IR << std::endl;
+    _exit(1);
+  }
+  return val;
 }
 
 //Instruction 1
@@ -229,7 +273,7 @@ void CPU::loadIdxXaddr() {
   //Get at this address in RAM
   adr += this->X;
   readVals(adr, this->AC);
-
+  
   PC++;
 }
 
@@ -247,7 +291,7 @@ void CPU::loadIdxYaddr() {
 
 //Instruction 6
 void CPU::loadSpX() {
-  int adr = this->SP + this->X;
+  int adr = this->SP + this->X + 1;
   readVals(adr, this->AC);  
 }
 
@@ -258,7 +302,6 @@ void CPU::storeAddr() {
   //Read the address from the next line
   write(cpupipe[1], &(this->PC), sizeof(int));
   read(rampipe[0], &adr, sizeof(int));
-  std::cout << "CPU GOT ADR: " << adr << std::endl;
   //send address
   write(cpupipe[1], &(adr), sizeof(int));
   //send value in AC now to RAM
@@ -362,6 +405,7 @@ void CPU::JumpAddr() {
   //get Address from RAM
   readVals(this->PC, adr);
   this->PC = adr;
+  //  std::cout << "Jumping to address: " << this->PC << std::endl;
   //Update address
 }
 
@@ -375,6 +419,7 @@ void CPU::JumpIfEqual() {
 
 //Instruction 22
 void CPU::JumpIfNotEqual() {
+  //  std::cout << "X: " << this->X << ", IR: " << this->IR << ", PC: " << PC << std::endl;
   if (this->AC != 0)
     JumpAddr();
   else //Otherwise, make sure to skip that next input
@@ -384,6 +429,7 @@ void CPU::JumpIfNotEqual() {
 //Instruction 23
 void CPU::Call() {
   addToStack(this->PC);     // Current PC + Next Instruction
+  //  std::cout << "Sending PC: " << this->PC << std::endl;
   JumpAddr();
 }
 
@@ -391,6 +437,7 @@ void CPU::Call() {
 void CPU::Ret() {
   //Jump back to instruction after call
   this->PC = popStack();
+  //  std::cout << "Getting PC: " << this->PC << std::endl;
 }
 
 //Instruction 25
@@ -406,11 +453,13 @@ void CPU::DecX() {
 //Instruction 27
 void CPU::Push() {
   addToStack(this->AC);
+  //  std::cout << "Sending " << this->AC << std::endl;
 }
 
 //Instruction 28
 void CPU::Pop() {
   this->AC = popStack();
+  //  std::cout << "Got " << this->AC << std::endl;
 }
 
 //Instruction 29
@@ -428,46 +477,14 @@ void CPU::IRet() {
 
 //Instruction 50
 void CPU::End() {
+  //write to RAM so it knows to close
+  int exit = 2;
+  write(cpupipe[1], &exit, sizeof(int));
   //end process
-  _exit(0);
 }
 
-void CPU::addToStack(int input) {
-  int temp = -1, isWrite = 1;
-  //dummy values
-  write(cpupipe[1], &temp, sizeof(int));
-  read(rampipe[0], &temp, sizeof(int));
-
-  //Ignore the read, want to write
-  write(cpupipe[1], &isWrite, sizeof(int));
-  write(cpupipe[1], &temp, sizeof(int));
-  if (this->SP >= 0) {
-    write(cpupipe[1], &(this->SP), sizeof(int));
-    write(cpupipe[1], &input, sizeof(int));
-    this->SP--;
-  }
-  else {
-    std::cerr << "ERROR: Stack is full, cannot add(Current instruction:"
-	      << IR << ")" << std::endl;
-    _exit(1);
-  }
+//Delete the pipes
+CPU::~CPU() {
+  close(rampipe[0]);
+  close(cpupipe[1]);
 }
-
-int CPU::popStack() {
-
-  int val;
-  //Simply increment the stack pointer, the data will remain there but
-  //will be overwritten on next addToStack
-  if (SP < SIZE) {
-    this->SP++;
-    readVals(this->SP, val);
-  }
-  else {
-    std::cerr << "ERROR: Stack is empty, cannot pop(Current instruction:)"
-	      << IR << std::endl;
-    _exit(1);
-  }
-  return val;
-}
-
-CPU::~CPU() {}
