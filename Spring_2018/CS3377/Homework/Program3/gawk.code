@@ -1,5 +1,0 @@
-#Made by Daniel Crawford(dsc160130@utdallas.edu) on 2/19/2018
-#Section 3377.501
-BEGIN	{col1sum = 0; col4sum = 0}
-	{col1sum = col1sum + $1; col4sum = col4sum + $4}
-END	{print col1sum, col4sum}
