@@ -1,0 +1,15 @@
+The file hello! was created.
+The file hello! was created.
+The file hello! was created.
+The file hello! was modified.
+The file hello! was modified.
+Current copies of hello!: 1
+Creating backup hello!.18.04.13-01:15:14
+
+Current copies of hello!: 1
+Creating backup hello!.18.04.13-01:15:14
+
+The file hello! was modified.
+Current copies of hello!: 2
+Creating backup hello!.18.04.13-01:16:20
+
