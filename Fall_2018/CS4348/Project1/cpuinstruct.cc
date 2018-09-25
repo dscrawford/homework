@@ -147,11 +147,13 @@ void CPU::runInstruct(int IR) {
   }
 
   //If IR==0, restore the interrupt state.
-  if (curTime == timer && !interruptState)
+  if (curTime == timer && !interruptState) {
     runInterrupt(1000);
+    this->curTime=0;
+  }
   //Increment if running current program
   if (!interruptState)
-    curTime++;
+    this->curTime++;
 }
 
 void CPU::runInterrupt(int PC) {
@@ -173,7 +175,6 @@ void CPU::runInterrupt(int PC) {
   }
   //Invert the boolean value
   this->interruptState = !(this->interruptState);
-  curTime = 0;
 }
 void CPU::readVals(int& addr, int& val) {
   //Give Ram address
@@ -199,6 +200,11 @@ void CPU::readVals(int& addr, int& val) {
 
 
 void CPU::addToStack(int input) {
+  if ( SP > USER && !this->kernelMode ) {
+    std::cerr << "ERROR: Can't access above address " << USER << " if not in "
+      "kernel mode(Current IR:  "<< IR << std::endl;
+    _exit(1);
+  }
   int temp = -1, isWrite = 1;
   //dummy values
   write(cpupipe[1], &temp, sizeof(int));
@@ -223,14 +229,19 @@ int CPU::popStack() {
   int val;
   //Simply increment the stack pointer, the data will remain there but
   //will be overwritten on next addToStack
+  if ( SP > USER && !this->kernelMode ) {
+    std::cerr << "ERROR: Can't access above address " << USER << " if not in "
+      "kernel mode(Current IR:  "<< IR << std::endl;
+    _exit(1);
+  }
   if (SP < SIZE) {
     this->SP++;
     readVals(this->SP, val);
   }
   //Otherwise throw error and inform stack is empty.
   else {
-    std::cerr << "ERROR: Stack is empty, cannot pop(Current instruction:)"
-	      << IR << std::endl;
+    std::cerr << "ERROR: Stack is empty, cannot pop(Current IR: "
+	      << IR << ")" << std::endl;
     _exit(1);
   }
   return val;
@@ -396,7 +407,7 @@ void CPU::copyToSP() {
 //Instruction 19
 void CPU::copyFromSP() {
   //Give AC the value in SP
-  this->AC = this->SP;
+  this->AC = this->SP + 1;
 }
 
 //Instruction 20
@@ -405,7 +416,6 @@ void CPU::JumpAddr() {
   //get Address from RAM
   readVals(this->PC, adr);
   this->PC = adr;
-  //  std::cout << "Jumping to address: " << this->PC << std::endl;
   //Update address
 }
 
@@ -419,7 +429,6 @@ void CPU::JumpIfEqual() {
 
 //Instruction 22
 void CPU::JumpIfNotEqual() {
-  //  std::cout << "X: " << this->X << ", IR: " << this->IR << ", PC: " << PC << std::endl;
   if (this->AC != 0)
     JumpAddr();
   else //Otherwise, make sure to skip that next input
@@ -429,7 +438,6 @@ void CPU::JumpIfNotEqual() {
 //Instruction 23
 void CPU::Call() {
   addToStack(this->PC);     // Current PC + Next Instruction
-  //  std::cout << "Sending PC: " << this->PC << std::endl;
   JumpAddr();
 }
 
@@ -453,18 +461,16 @@ void CPU::DecX() {
 //Instruction 27
 void CPU::Push() {
   addToStack(this->AC);
-  //  std::cout << "Sending " << this->AC << std::endl;
 }
 
 //Instruction 28
 void CPU::Pop() {
   this->AC = popStack();
-  //  std::cout << "Got " << this->AC << std::endl;
 }
 
 //Instruction 29
 void CPU::Int() {
-  if(!interruptState)
+  if(!this->interruptState)
     runInterrupt(1500);
 }
 
