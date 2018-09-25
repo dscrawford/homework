@@ -146,7 +146,7 @@ void CPU::runInstruct(int IR) {
     break;
   }
 
-  //If IR==0, restore the interrupt state.
+  //If the timer is up and not currently in an interrupt.
   if (curTime == timer && !interruptState) {
     runInterrupt(1000);
     this->curTime=0;
@@ -178,7 +178,7 @@ void CPU::runInterrupt(int PC) {
 }
 void CPU::readVals(int& addr, int& val) {
   //Give Ram address
-  if (addr > SIZE - 1 || addr < 0) {
+  if (addr >= SIZE || addr < 0) {
     std::cerr << "ERROR: attempting to open address " << addr << " which is out"
       " of range.(IR " << IR << ")" << std::endl;
     _exit(1);
@@ -470,8 +470,9 @@ void CPU::Pop() {
 
 //Instruction 29
 void CPU::Int() {
-  if(!this->interruptState)
+  if(!this->interruptState) {
     runInterrupt(1500);
+  }
 }
 
 //Instruction 30
