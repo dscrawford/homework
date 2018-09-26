@@ -1,11 +1,11 @@
 8 //get
 16 //copyToY
-1 //put
+9 //put
 1
 1 //load newline
 10
-1 //put
-1
+9 //put
+2
 17 //CopyFromY
 27 //push int
 14 //CopyToX
