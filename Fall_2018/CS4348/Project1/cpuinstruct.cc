@@ -177,12 +177,14 @@ void CPU::runInterrupt(int PC) {
   this->interruptState = !(this->interruptState);
 }
 void CPU::readVals(int& addr, int& val) {
-  //Give Ram address
+  //If address is out of range
   if (addr >= SIZE || addr < 0) {
     std::cerr << "ERROR: attempting to open address " << addr << " which is out"
       " of range.(IR " << IR << ")" << std::endl;
     _exit(1);
   }
+
+  //If address is trying to access system stack when not in kernel mode
   if (addr > USER && !kernelMode) {
     std::cerr << "ERROR: attempting to open address " << addr << " which is in"
       " system stack.(IR " << IR << ")" << std::endl;
@@ -200,6 +202,7 @@ void CPU::readVals(int& addr, int& val) {
 
 
 void CPU::addToStack(int input) {
+  //If SP is pointing to system stack in user mode error out
   if ( SP > USER && !this->kernelMode ) {
     std::cerr << "ERROR: Can't access above address " << USER << " if not in "
       "kernel mode(Current IR:  "<< IR << std::endl;
@@ -229,11 +232,14 @@ int CPU::popStack() {
   int val;
   //Simply increment the stack pointer, the data will remain there but
   //will be overwritten on next addToStack
+
+  //If trying to pop from system stack.
   if ( SP > USER && !this->kernelMode ) {
     std::cerr << "ERROR: Can't access above address " << USER << " if not in "
       "kernel mode(Current IR:  "<< IR << std::endl;
     _exit(1);
   }
+  //If SP is lesser than Size, read the stackpointer
   if (SP < SIZE) {
     this->SP++;
     readVals(this->SP, val);
@@ -470,6 +476,7 @@ void CPU::Pop() {
 
 //Instruction 29
 void CPU::Int() {
+  //Run if not currently in interrupt State
   if(!this->interruptState) {
     runInterrupt(1500);
   }
@@ -487,10 +494,9 @@ void CPU::End() {
   //write to RAM so it knows to close
   int exit = 2;
   write(cpupipe[1], &exit, sizeof(int));
-  //end process
 }
 
-//Delete the pipes
+//Close the pipes
 CPU::~CPU() {
   close(rampipe[0]);
   close(cpupipe[1]);

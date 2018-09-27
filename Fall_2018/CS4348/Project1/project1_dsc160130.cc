@@ -8,6 +8,14 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
+  if (argc == 3) {
+    int timer = stoi(std::string(argv[2]));
+    if (timer <= 0) {
+      std::cerr << "ERROR: Cannot have timer below or equal to 0" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
   //in rampipe ram writes, in cpupipe cpupipe writes
   int rampipe[2];
   int cpupipe[2];
