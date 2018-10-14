@@ -93,13 +93,16 @@ Email: dsc160130@utdallas.edu
                 (my-list-ref-helper (cdr lst) (add1 i))))))
     (my-list-ref-helper lst 0)))
 
+#|
 (define deep-reverse
   (lambda (lst)
-    (define deep-reverse-helper
-      (lambda (lst acc)
-        (if (null? lst)
-            acc
-            (if(list? (car lst))
-               (deep-reverse-helper (cdr lst) (cons (deep-reverse-helper (car lst) '()) acc))
-               (deep-reverse-helper (cdr lst) (cons (car lst) acc))))))
-    (deep-reverse-helper lst '())))
+    (define my-reverse
+     (lambda (lst acc)
+       (if (and (null? lst) (list? lst))
+           acc
+           (my-reverse (cdr lst) (cons (car lst) acc)))))
+    (if (null? lst)
+        empty
+        (if(list? lst)
+           ( append (deep-reverse (my-reverse lst '())) (deep-reverse (cdr lst)))
+           ( lst))))) |#
