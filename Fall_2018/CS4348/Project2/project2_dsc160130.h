@@ -9,12 +9,13 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <random>
-#define NUM_CUSTOMERS 3
+#define NUM_CUSTOMERS 25
 #define NUM_FRONTDESK 2
 #define NUM_BELLHOP   2
 
 sem_t frontDeskAvailable, checkIn, exchangeDone,guestShared,valuesReady,
-  empExchange,giveRoom,getBellhop,entersRoom,bellhopReady,bellExchange,giveBags;
+  empExchange,giveRoom,getBellhop,entersRoom,bellhopReady,bellExchange,
+  bellhopAvailable,giveBags,gotBags, frontDeskExchangeDone, custExchangeDone;
 
 int tempcust = -1, temproom = -1, tempbags = -1, tempfrontdesk = -1,
   tempbellhop = -1, currRoom = 0;

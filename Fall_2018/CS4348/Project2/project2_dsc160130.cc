@@ -7,6 +7,19 @@ int getNumber() {
   return distribution(generator);
 }
 
+void wait(sem_t &semaphore) {
+  if (sem_wait(&semaphore) == -1) {
+    printf("ERROR: waiting for semaphore");
+    exit(1);
+  }
+}
+
+void send(sem_t &semaphore) {
+  if (sem_post(&semaphore) == -1) {
+    printf("ERROR: sending semaphore");
+    exit(1);
+  }
+}
 void *customer(void *arg) {
   int *pnum = (int *) arg;
   int cust = *pnum, bags = getNumber(), room, frontdesk, bellhop;
@@ -14,113 +27,70 @@ void *customer(void *arg) {
 
   //checkin()
   CheckIn(cust, bags);
-  //send checkin
-  if ( sem_post(&checkIn) == -1) {
-    printf("ERROR: sending semaphore");
-    exit(1);
-  }
-  
   //wait employeeavailable
-  if ( sem_wait(&frontDeskAvailable) == -1) {
-    printf("ERROR: waiting for semaphore");
-    exit(1);
-    }
-
+  wait(frontDeskAvailable);
+  //send checkin
+  send(checkIn);
   //wait exchangedone
-  if ( sem_wait(&exchangeDone) == -1) {
-    printf("ERROR: waiting for semaphore");
-    exit(1);
-  }
+  wait(exchangeDone);//1->0
   //share guest
   tempcust = cust;
   //send guestshared
-  if ( sem_post(&guestShared) == -1) {
-    printf("ERROR: sending semaphore");
-    exit(1);
-  }
+  send(guestShared);
   //wait room&frontdesk
-  if ( sem_wait(&valuesReady) == -1) {
-    printf("ERROR: waiting for semaphore");
-    exit(1);
-  }
+  wait(valuesReady);
   //get  room&frontdesk
   room = temproom;
   frontdesk = tempfrontdesk;
+  //wait frontDeskExchangeDone
+  wait(frontDeskExchangeDone);
+  send(custExchangeDone);
   //send empExchange
-  if ( sem_post(&empExchange) == -1) {
-    printf("ERROR: sending semaphore");
-    exit(1);
-  }
-  //send exchangedone
-  if ( sem_post(&exchangeDone) == -1) {
-    printf("ERROR: sending semaphore");
-    exit(1);
-  }
+  send(empExchange);
+
   //wait giveroom
-  if ( sem_wait(&giveRoom) == -1) {
-    printf("ERROR: waiting for semaphore");
-    exit(1);
-  }
+  wait(giveRoom);
   //getroom()
   GetRoom(frontdesk, cust, room);
 
   //if # bags > 2 get and singal for bellhop
   if (bags > 2) {
+    //wait bellhopAvailable
+    wait(bellhopAvailable);
+    //GetBellHop()
     GetBellHop(cust);
-    if ( sem_post(&getBellhop) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
-
-        if ( sem_post(&entersRoom) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
-    //  wait exchangedone
-    if ( sem_wait(&exchangeDone) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
-    //  share guest
+    //send getBellhop
+    send(getBellhop);
+    //wait exchangeDone
+    wait(exchangeDone);
+    //share guest
     tempcust = cust;
-    //  send guestshared
-    if ( sem_post(&guestShared) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
-    //  wait bellhopready
-    if ( sem_wait(&bellhopReady) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
-    //  get bellhop
+    //send guestShared
+    send(guestShared);
+    //wait bellhopReady
+    printf("DID I GET STUCK HERE?\n");
+    wait(bellhopReady);
+    printf("NO\n");
+    //get bellhop
     bellhop = tempbellhop;
-    //  send bellexchange
-    if ( sem_post(&bellExchange) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
-    //  send exchangedone
-    if ( sem_post(&exchangeDone) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
+    //send bellExchange
+    send(bellExchange);
+    printf("SENT BELLEXCHANGE\n");
+    //wait gotBags
+    wait(gotBags);
   }
   //enterRoom()
   EnterRoom(cust, room);
   if (bags > 2) {
-    //  signal EntersRoom
-    //  wait givebags
-    if ( sem_wait(&giveBags) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
-    //  getBags()
+    //send entersRoom
+    send(entersRoom);
+    //wait giveBags
+    wait(giveBags);
+    //getBackBags
     GetBackBags(bellhop, cust);
   }
   //then Retire()
-  Retire(cust);
-  
+  Retire(cust);  
   
   return NULL;
 }
@@ -132,38 +102,31 @@ void *FrontDesk(void *arg) {
 
   while (true) {
     //send frontAvailable
-    if ( sem_post(&frontDeskAvailable) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-      }
+    send(frontDeskAvailable);
     //wait checkIn
-    if ( sem_wait(&checkIn) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
-    room = ++currRoom;
+    wait(checkIn);
     //wait empExchange
-    if ( sem_wait(&empExchange) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
+    wait(empExchange);//1
+    //wait guestShared
+    wait(guestShared);//1
     //get guest
     cust = tempcust;
     //share room, frontdesk
+    room = ++currRoom;
     temproom = room;
     tempfrontdesk = frontdesk;
     //send valuesReady
-    if ( sem_post(&valuesReady) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
+    send(valuesReady);
+    //send frontDeskExchangeDone
+    send(frontDeskExchangeDone);
+    wait(custExchangeDone);
+    //send exchangeDone
+    send(exchangeDone);
+
     //giveRoom()
     GiveRoom(frontdesk, cust, room);
     //send giveRoom
-    if ( sem_post(&giveRoom) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
+    send(giveRoom);
   }
 
   return NULL;
@@ -173,49 +136,34 @@ void *Bellhop(void *arg) {
   int *pnum = (int *) arg;
   int bellhop = *pnum, cust;
   while (true) {
-    //send bellhopavailable
-    if ( sem_post(&bellhopReady) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
+    //send bellhopAvailable
+    send(bellhopAvailable);
     //wait getBellhop
-    if ( sem_wait(&getBellhop) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
-    //wait bellexchange
-    if ( sem_wait(&bellExchange) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
-    //wait guestshared
-    if ( sem_wait(&guestShared) == -1) {
-      printf("ERROR: waiting for semaphore");
-      exit(1);
-    }
+    wait(getBellhop);
+    //wait bellExchange
+    printf("GOT HERE\n");
+    wait(bellExchange);
+    printf("GOT THERE\n");
+    //wait guestReady
+    wait(guestShared);
     //get guest
     cust = tempcust;
-    //getBags()
-    GetBags(bellhop, cust);
     //share bellhop
     tempbellhop = bellhop;
-    //send bellhopready
-    if ( sem_post(&bellhopReady) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
-    //wait enterRoom
-    if ( sem_wait(&entersRoom) == -1) {
-	  printf("ERROR: waiting for semaphore");
-	  exit(1);
-    }
+    //send bellhopReady
+    send(bellhopReady);
+    //send exchangeDone
+    send(exchangeDone);
+    //getBags()
+    GetBags(bellhop, cust);
+    //send gotBags
+    send(gotBags);
+    //wait entersRoom
+    wait(entersRoom);
     //giveBags()
-    GiveBags(bellhop, cust);
-    //send giveBags
-    if ( sem_post(&giveBags) == -1) {
-      printf("ERROR: sending semaphore");
-      exit(1);
-    }
+    GiveBags(bellhop,cust);
+    //send givebags
+    send(giveBags);
   }
 }
 
@@ -261,9 +209,16 @@ int main() {
     exit(1);
   if (sem_init (&giveBags,0,0) == -1)
     exit(1);
+  if (sem_init (&gotBags,0,0) == -1)
+    exit(1);
+  if (sem_init (&frontDeskExchangeDone,0,0) == -1)
+    exit(1);
+  if (sem_init (&custExchangeDone,0,0) == -1)
+    exit(1);
 
   printf("Simulation starts\n");
-  for (int frontdesk_count = 0; frontdesk_count < NUM_FRONTDESK; ++frontdesk_count) {
+  for (int frontdesk_count = 0; frontdesk_count < NUM_FRONTDESK;
+       ++frontdesk_count) {
     int *pnum = (int*)malloc(sizeof(int));
     *pnum = frontdesk_count;
     status = pthread_create(&frontdesk[frontdesk_count], NULL, FrontDesk,

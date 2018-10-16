@@ -2,7 +2,7 @@ PROJECT_NAME=project2_dsc160130
 EXEC=$(PROJECT_NAME)
 CXX=g++
 CPP=g++
-CXXFLAGS=-std=c++11 -Wall -pedantic -pthread
+CXXFLAGS=-std=c++11 -Wall -pedantic -pthread -g
 OBJS=$(PROJECT_NAME).cc printFunctions.cc
 
 all: $(EXEC)
