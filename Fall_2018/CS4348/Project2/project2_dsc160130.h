@@ -9,7 +9,7 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <random>
-#define NUM_CUSTOMERS 25
+#define NUM_CUSTOMERS 3
 #define NUM_FRONTDESK 2
 #define NUM_BELLHOP   2
 

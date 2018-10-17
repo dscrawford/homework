@@ -56,25 +56,25 @@ void *customer(void *arg) {
 
   //if # bags > 2 get and singal for bellhop
   if (bags > 2) {
-    //wait bellhopAvailable
-    wait(bellhopAvailable);//1
-    printf("1\n");
     //GetBellHop()
     GetBellHop(cust);
-    //send getBellhop
+    //wait bellhopAvailable
+    wait(bellhopAvailable);//1
+    //printf("1\n");
+    //GetBellHop()
     send(getBellhop);//2
-    printf("2\n");
+    //printf("2\n");
     //wait exchangeDone
     wait(exchangeDone);//getting stuck
-    printf("3\n");
+    //printf("3\n");
     //share guest
     tempcust = cust;
     //send guestShared
     send(guestShared);//4
-    printf("4\n");
+    //printf("4\n");
     //wait bellhopReady
     wait(bellhopReady);//5
-    printf("5\n");
+    //printf("5\n");
     //get bellhop
     bellhop = tempbellhop;
     //send custBellExchangeDone
@@ -83,10 +83,10 @@ void *customer(void *arg) {
     wait(bellhopExchangeDone);
     //send bellExchange
     send(bellExchange);//6
-    printf("6\n");
+    //printf("6\n");
     //wait gotBags
     wait(gotBags);//7
-    printf("7\n");
+    //printf("7\n");
   }
   //enterRoom()
   EnterRoom(cust, room);
