@@ -44,6 +44,7 @@ void *customer(void *arg) {
   frontdesk = tempfrontdesk;
   //wait frontDeskExchangeDone
   wait(frontDeskExchangeDone);
+  //wait custExchangeDone
   send(custExchangeDone);
   //send empExchange
   send(empExchange);
@@ -56,28 +57,36 @@ void *customer(void *arg) {
   //if # bags > 2 get and singal for bellhop
   if (bags > 2) {
     //wait bellhopAvailable
-    wait(bellhopAvailable);
+    wait(bellhopAvailable);//1
+    printf("1\n");
     //GetBellHop()
     GetBellHop(cust);
     //send getBellhop
-    send(getBellhop);
+    send(getBellhop);//2
+    printf("2\n");
     //wait exchangeDone
-    wait(exchangeDone);
+    wait(exchangeDone);//getting stuck
+    printf("3\n");
     //share guest
     tempcust = cust;
     //send guestShared
-    send(guestShared);
+    send(guestShared);//4
+    printf("4\n");
     //wait bellhopReady
-    printf("DID I GET STUCK HERE?\n");
-    wait(bellhopReady);
-    printf("NO\n");
+    wait(bellhopReady);//5
+    printf("5\n");
     //get bellhop
     bellhop = tempbellhop;
+    //send custBellExchangeDone
+    send(custBellExchangeDone);
+    //waitbellhopExchangeDone
+    wait(bellhopExchangeDone);
     //send bellExchange
-    send(bellExchange);
-    printf("SENT BELLEXCHANGE\n");
+    send(bellExchange);//6
+    printf("6\n");
     //wait gotBags
-    wait(gotBags);
+    wait(gotBags);//7
+    printf("7\n");
   }
   //enterRoom()
   EnterRoom(cust, room);
@@ -137,27 +146,29 @@ void *Bellhop(void *arg) {
   int bellhop = *pnum, cust;
   while (true) {
     //send bellhopAvailable
-    send(bellhopAvailable);
+    send(bellhopAvailable);//1
     //wait getBellhop
-    wait(getBellhop);
+    wait(getBellhop);//2
     //wait bellExchange
-    printf("GOT HERE\n");
-    wait(bellExchange);
-    printf("GOT THERE\n");
+    wait(bellExchange);//6
     //wait guestReady
-    wait(guestShared);
+    wait(guestShared);//4
     //get guest
     cust = tempcust;
     //share bellhop
     tempbellhop = bellhop;
     //send bellhopReady
-    send(bellhopReady);
+    send(bellhopReady);//5
+    //send bellHopExchangeDone
+    send(bellhopExchangeDone);
+    //wait custBellExchangeDone
+    wait(custBellExchangeDone);
     //send exchangeDone
-    send(exchangeDone);
+    send(exchangeDone);//3
     //getBags()
     GetBags(bellhop, cust);
     //send gotBags
-    send(gotBags);
+    send(gotBags);//7
     //wait entersRoom
     wait(entersRoom);
     //giveBags()
@@ -214,6 +225,10 @@ int main() {
   if (sem_init (&frontDeskExchangeDone,0,0) == -1)
     exit(1);
   if (sem_init (&custExchangeDone,0,0) == -1)
+    exit(1);
+  if (sem_init (&bellhopExchangeDone,0,0) == -1)
+    exit(1);
+  if (sem_init (&custBellExchangeDone,0,0) == -1)
     exit(1);
 
   printf("Simulation starts\n");

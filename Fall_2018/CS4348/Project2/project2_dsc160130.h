@@ -15,7 +15,8 @@
 
 sem_t frontDeskAvailable, checkIn, exchangeDone,guestShared,valuesReady,
   empExchange,giveRoom,getBellhop,entersRoom,bellhopReady,bellExchange,
-  bellhopAvailable,giveBags,gotBags, frontDeskExchangeDone, custExchangeDone;
+  bellhopAvailable,giveBags,gotBags, frontDeskExchangeDone, custExchangeDone,
+  bellhopExchangeDone, custBellExchangeDone;
 
 int tempcust = -1, temproom = -1, tempbags = -1, tempfrontdesk = -1,
   tempbellhop = -1, currRoom = 0;
