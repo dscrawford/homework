@@ -1,5 +1,5 @@
-#ifndef PROJECT2_H
-#define PROJECT2_H
+#ifndef PROJECT2_H_
+#define PROJECT2_H_
 
 #include <iostream>
 #include <pthread.h>
@@ -9,18 +9,26 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <random>
-#define NUM_CUSTOMERS 3
+#define NUM_CUSTOMERS 25
 #define NUM_FRONTDESK 2
 #define NUM_BELLHOP   2
 
-sem_t frontDeskAvailable, checkIn, exchangeDone,guestShared,valuesReady,
-  empExchange,giveRoom,getBellhop,entersRoom,bellhopReady,bellExchange,
-  bellhopAvailable,giveBags,gotBags, frontDeskExchangeDone, custExchangeDone,
-  bellhopExchangeDone, custBellExchangeDone;
+extern sem_t checkIn, fdAvailable, bhAvailable, custExchanged, getBH,
+  gotBags[NUM_CUSTOMERS], giveBags[NUM_CUSTOMERS], entersRoom[NUM_CUSTOMERS],
+  giveTip[NUM_CUSTOMERS], giveRoom[NUM_CUSTOMERS];
 
-int tempcust = -1, temproom = -1, tempbags = -1, tempfrontdesk = -1,
-  tempbellhop = -1, currRoom = 0;
+struct customer {
+  int room = -1; //room number
+  int bags = -1; //number of bags
+  int fd = -1; //front desk
+  int bh = -1; //bellhop
+};
 
+extern int shareCust,  currRoom;
+
+extern customer customers[NUM_CUSTOMERS];
+
+//print functions
 void CheckIn(int, int);
 void GiveRoom(int, int, int);
 void GetRoom(int, int, int);
@@ -31,5 +39,18 @@ void GiveBags(int, int);
 void GetBackBags(int, int);
 void Retire(int);
 
+//semaphore functions
+void wait(sem_t&);
+void send(sem_t&);
+void init_semaphore(sem_t&, int);
+
+//random Generators
+int getNumber();
+
+//thread functions
+void *Customer(void*);
+void *FrontDesk(void*);
+void *Bellhop(void*);
+void joinThreads(pthread_t[],int);
 
 #endif //PROJECT2_H

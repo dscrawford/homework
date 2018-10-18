@@ -1,4 +1,4 @@
-#include <iostream>
+#include "project2_dsc160130.h"
 void CheckIn(int cust, int bags) {
   printf("Guest %d enters hotel with %d bags\n", cust, bags);
 }

@@ -3,7 +3,7 @@ EXEC=$(PROJECT_NAME)
 CXX=g++
 CPP=g++
 CXXFLAGS=-std=c++11 -Wall -pedantic -pthread -g
-OBJS=$(PROJECT_NAME).cc printFunctions.cc
+OBJS=$(PROJECT_NAME).cc printFunctions.cc semFunctions.cc randomGen.cc threadFunctions.cc
 
 all: $(EXEC)
 
