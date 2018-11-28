@@ -13,21 +13,39 @@ Logic::Logic(Disk& disk, int type) {
 
 void Logic::addToFAS(std::string file_name, int start, int length) {
   block b = disk.read(FILEALLOC);
-  b.bytes += file_name + "\t" + std::to_string(start) + "\t" +
-    std::to_string(length) + "\n";
+  b.bytes += file_name + "\t" + std::to_string(start)
+    + "\t" + std::to_string(length) + "\n";
   disk.write(b, FILEALLOC);
 }
 
 void Logic::deleteFile(std::string file_name) {
   block b = disk.read(FILEALLOC);
-  std::string delim1 = "\t", delim2 = "\n", token;
-  int pos = 0;
-  while ( (token = b.bytes.substr(pos,b.bytes.find(delim1))) != file_name
-	  && pos < MAXBLOCKSIZE) {
-    pos = b.bytes.find(delim2) + 1;
+  if (b.bytes == "") {
+    std::cerr << "ERROR: No files to delete" << std::endl;
+    return;
   }
-  std::cout << b.bytes.substr(pos, b.bytes.find(delim2)) << std::endl;
-  b.bytes.erase(pos, b.bytes.find(delim2));
+  pair p = findFile(file_name);
+  if (p.beg == -1) {
+    std::cout << "ERROR: File to delete not found" << std::endl;
+    return;
+  }
+
+  std::string file_info
+  std::queue<int> blocksToDelete;
+  int start, length;
+  getFileData(file_info, start, length);
+  
+  //Contiguous implementation
+  //
+  for (int i = start; i < ceil( ((double)start + length)/MAXBLOCKSIZE); ++i) {
+    block b;
+    disk.write(b, i);
+    changeBitmap(i);
+  }
+  //
+  //
+
+  b.bytes.erase(p.beg, file_info.length());
   disk.write(b, FILEALLOC);
 }
 
@@ -150,22 +168,31 @@ int Logic::getBlocks(int fileSize) {
 }
 
 pair Logic::findFile(std::string file_name) {
-  int pos = -1;
+  pair pos;
+  pos.beg = -1;
+  pos.end = -1;
   std::string str;
   std::stringstream ss(disk.read(FILEALLOC).bytes);
   int lengthCovered = 0;
-  while (getline(ss, str, '\t')) {
-    std::cout << "thing: " << str.substr(0, str.find("\t")) << ". And lol"
-	      << std::endl;
+  while (getline(ss, str)) {
     if (str.substr(0, str.find("\t")) == file_name) {
-      pos = lengthCovered;
+      pos.beg = lengthCovered;
+      pos.end = lengthCovered + str.length() + 1;
       break;
     }
-    lengthCovered += str.length + 1; //length of current str plus newline
+    lengthCovered += (str.length() + 1); //length of current str plus newline
   }
   
-  pair substrpos;
-  substrpos.beg = pos;
-  substrpos.end = b.bytes.find(delim2 + 1);
-  return substrpos;
+  return pos;
+}
+
+void Logic::getFileData(std::string file_info, int& start, int& length) {
+  std::string file_info = b.bytes.substr(p.beg, p.end);
+  std::string vals[2];
+  int pos = file_info.substr(0, file_info.find("\t")).length();
+  vals[0] = file_info.substr(pos, file_info.find(pos, "\t"));
+  pos += file_info.find(pos, "\t");
+  vals[1] = file_info.substr(pos, file_info.length());
+  start = std::stoi(vals[0]);
+  length = std::stoi(vals[1]);
 }

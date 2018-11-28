@@ -5,9 +5,15 @@
 #include <fstream>
 #include <math.h>
 #include <sstream>
+#include <queue>
+#include <string>
 
 struct pair {
   int beg, end;
+  pair() {
+    beg = -1;
+    end = -1;
+  }
 };
 
 struct block {

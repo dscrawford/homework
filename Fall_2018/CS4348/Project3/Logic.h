@@ -8,6 +8,7 @@ class Logic {
   pair findFile(std::string);
   int getBlocks(int);
   int getFileSize(const char*);
+  void getFileData(std::string, int, int);
  public:
   Logic(Disk&, int);
   void addToFAS(std::string, int, int);

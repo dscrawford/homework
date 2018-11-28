@@ -3,7 +3,7 @@ EXEC=$(PROJECT_NAME)
 CXX=g++
 CPP=g++
 CXXFLAGS=-std=c++11 -Wall -pedantic -g
-OBJS=$(PROJECT_NAME).o validation.o Disk.o allocFunctions.o Logic.o
+OBJS=$(PROJECT_NAME).o validation.o Disk.o Logic.o
 HEADER=Disk.h Logic.h $(PROJECT_NAME).h
 
 all: $(EXEC)
