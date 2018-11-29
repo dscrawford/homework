@@ -1,5 +1,18 @@
 #include "project3.h"
 
+int getType(std::string input) {
+  for (int i = 0; i < input.length(); ++i) {
+    input[i] = std::tolower(input[i]);
+  }
+
+  if (input == "contiguous")
+    return CONTIGUOUS;
+  else if (input == "indexed")
+    return INDEXED;
+  else if (input == "chained")
+    return CHAINED;
+}
+
 int getInt() {
   std::string str;
   std::getline(std::cin, str);
@@ -14,7 +27,5 @@ int getInt() {
 std::string getStr() {
   std::string str;
   std::getline(std::cin, str);
-  if ( str.length() > 9 )
-    return NULL;
   return str;
 }

@@ -1,28 +1,37 @@
 #include "project3.h"
 
 int main(int argc, char** argv) {
-  if (argc > 2) {
-    std::cerr << "ERROR: Too many arguments (Should be in format "
-	      << "./project3 [consecutive|indexed|chained]" << std::endl;
+  if (argc != 2) {
+    std::cerr << "ERROR: Invalid arguments count (Should be in format "
+	      << "./project3 [contiguous|indexed|chained]" << std::endl;
     return 1;
   }
-  Disk disk;
-  Logic logic(disk, 0); 
-  int choice = 0;
 
+  int type = getType(std::string(argv[1]));
+  std::cout << "type: " << type << std::endl;
+  Disk disk;
+  Logic logic(disk, type);
+
+  
+  int choice = 0;
   while (choice != 8) {
     printOptions();
     choice = getInt();
 
     switch(choice) {
     case 1:
+      {
+	std::cout << "Enter file name: ";
+	std::string file_name = getStr();
+	std::cout << logic.getFile(file_name) << std::endl;
+      }
       break;
     case 2:
-      std::cout << logic.read(FILEALLOC).bytes << std::endl;
+      std::cout << logic.ReadBlock(FILEALLOC).bytes << std::endl;
       break;
     case 3:
       {
-	block b = logic.read(BITMAP);
+	block b = logic.ReadBlock(BITMAP);
 	for (int i = 0; i < MAXBLOCKS / 32; ++i) {
 	  for (int j = 0; j < 32; ++j) {
 	    std::cout << b.bytes[j+(i*32)];
@@ -35,10 +44,15 @@ int main(int argc, char** argv) {
       {
 	std::cout << "Enter block index: ";
 	int index = getInt();
-	std::cout << logic.read(index).bytes << std::endl;
+	std::cout << logic.ReadBlock(index).bytes << std::endl;
       }
       break;
     case 5:
+      {
+	std::cout << "Enter file to write: ";
+	std::string input = getStr();
+	logic.writeRealFile(input);
+      }
       break;
     case 6:
       {
@@ -47,7 +61,7 @@ int main(int argc, char** argv) {
 	fromFile = getStr();
 	std::cout << "Copy to: ";
 	toFile = getStr();
-	logic.writeFile(fromFile, toFile);
+	logic.WriteFile(fromFile, toFile);
       }
       break;
     case 7:
