@@ -3,7 +3,7 @@
 int getDigits(int number) {
   int numDigits = 0;
   while (number) {
-    numDigits /= 10;
+    number /= 10;
     numDigits++;
   }
   return numDigits;
@@ -64,16 +64,16 @@ void Logic::deleteFile(std::string file_name) {
       DeleteBlock(i);
   }
   //
-  //
+  //Chained implementation
   //
   else if (type == CHAINED) {
     int pointerSize = getDigits(MAXBLOCKS);
     int address = start;
     do {
     //Read first pointer
-      int i = address;
-      address = std::stoi( ReadBlock(start).bytes.substr(0, pointerSize) );
-      DeleteChainedOrIndexedBlock(i);
+      int temp = std::stoi(ReadBlock(address).bytes.substr(0, pointerSize));
+      DeleteChainedOrIndexedBlock(address);
+      address = temp;
     } while (address != 0);
     
   }
@@ -94,106 +94,15 @@ block Logic::ReadBlock(int i) {
 
 void Logic::DeleteBlock(int i) {
   disk.write(*(new block), i);
-  changeBitmap(i);
+  if (ReadBlock(i).bytes[i] != '0')
+    changeBitmap(i);
 }
+
 void Logic::WriteBlock(block b, int i) {
   disk.write(b, i);
-  changeBitmap(i);
-}
-
-void Logic::WriteFile(std::string fromFile, std::string toFile) {
-  if (fromFile == "" && toFile == "") {
-    std::cerr << "ERROR: Need a name" << std::endl;
-    return;
+  if (ReadBlock(BITMAP).bytes[i] == '0') {
+    changeBitmap(i);
   }
-
-  const int file_size = getFileSize(fromFile.c_str()),
-    blocks = getBlocks(file_size);
-  std::fstream file(fromFile, std::ifstream::in);
-
-  if (!file.is_open()) {
-    std::cerr << "ERROR: File \"" <<  fromFile << "\" failed to open."
-	      << std::endl;
-    return;
-  }
-  if (blocks > 10 || blocks <= 0) {
-    std::cerr << "ERROR: File is empty or too large(10 blocks max)"
-	      << std::endl;
-    return;
-  }
-
-  if (type == CONTIGUOUS) {
-    pair contiguous = freeContiguous(blocks);
-    
-    //If there was no contiguous space available
-    if (contiguous.beg < 0) {
-      std::cerr << "ERROR: Not enough contiguous space available" << std::endl;
-      return;
-    }
-
-
-    
-    int spaceToAllocate = file_size;
-    for (int i = contiguous.beg; i <= contiguous.end; ++i) {
-      //Get remaining space needed to allocate in 256 size blocks
-      int space = (spaceToAllocate > MAXBLOCKSIZE)
-	? MAXBLOCKSIZE : spaceToAllocate;
-      spaceToAllocate -= MAXBLOCKSIZE;
-      block b;
-      char* cstr = new char[space];
-      file.read(cstr, space);
-      b.bytes = std::string(cstr);
-      std::cout << "Made it here!" << std::endl;
-      WriteBlock(b, i);
-    }
-
-    addToFAS(toFile, contiguous.beg, file_size);
-  }
-
-  else if (type == CHAINED) {
-    int blocks = getBlocks(file_size);
-    if ( freeSpace() < blocks ) {
-      std::cerr << "ERROR: Not enough space available" << std::endl;
-      return;
-    }
-
-    int pointerSize = getDigits(MAXBLOCKS), spaceToAllocate = file_size,
-      start = openSpace.front();
-
-    std::cout << pointerSize << std::endl;
-    for (int i = 0; i < blocks; ++i) {
-      //Get remaining space needed to allocate in 256 size blocks
-      int space = (spaceToAllocate > MAXBLOCKSIZE - pointerSize)
-	? MAXBLOCKSIZE - pointerSize : spaceToAllocate;
-      //Space needed to allocate
-      spaceToAllocate -= (MAXBLOCKSIZE + pointerSize);
-      block b;
-      char* cstr = new char[space];
-
-      //Write a pointer at the beginning of the file.
-      if (i == blocks - 1)
-	b.bytes = "000";
-      else {
-	std::stringstream ss;
-	ss << std::setfill('0') << std::setw(pointerSize) << openSpace.front();
-	b.bytes = ss.str();
-      }
-
-      file.read(cstr, space);
-      b.bytes += std::string(cstr);
-      std::cout << b.bytes;
-      WriteRandBlock(b);
-    }
-    addToFAS(toFile, start, file_size);
-  }
-
-  else if (type == INDEXED) {
-    
-  }
-
-
-  
-  file.close();
 }
 
 void Logic::changeBitmap(int index) {
@@ -203,7 +112,7 @@ void Logic::changeBitmap(int index) {
   else
     b.bytes[index] = '0';
 
-  WriteBlock(b, BITMAP);
+  disk.write(b, BITMAP);
 }
 int Logic::getFileSize(const char* file_name) {
   std::ifstream file(file_name, std::ifstream::in | std::ifstream::ate);
@@ -302,14 +211,13 @@ std::string Logic::getFile(std::string file_name) {
       int address = start;
       do {
 	//Read first pointer
-	int i = address;
-	address = std::stoi( ReadBlock(start).bytes.substr(0, pointerSize) );
-	block b = ReadBlock(i);
+	block b = ReadBlock(address);
 	file_data += b.bytes.substr(pointerSize, b.bytes.length());
+	address = std::stoi(ReadBlock(address).bytes.substr(0, pointerSize));
       } while (address != 0);
     }
-  return file_data;
   }
+  return file_data;
 }
 
 void Logic::writeRealFile(std::string file_name) {
@@ -340,10 +248,117 @@ int Logic::freeSpace() {
 
   int free_space = 0;
   std::string bitmap = ReadBlock(BITMAP).bytes;
-  for (int i = 0; i < bitmap.length(); ++i) {
+  for (unsigned int i = 0; i < bitmap.length(); ++i) {
     if (bitmap[i] == '0')
       free_space++;
   }
 
   return free_space;
+}
+
+void Logic::WriteFile(std::string fromFile, std::string toFile) {
+  if (fromFile == "" && toFile == "") {
+    std::cerr << "ERROR: Need a name" << std::endl;
+    return;
+  }
+
+  int file_size = getFileSize(fromFile.c_str()),
+    blocks = getBlocks(file_size);
+  std::fstream file(fromFile, std::ifstream::in);
+
+  if (!file.is_open()) {
+    std::cerr << "ERROR: File \"" <<  fromFile << "\" failed to open."
+	      << std::endl;
+    return;
+  }
+  if (blocks > 10 || blocks <= 0) {
+    std::cerr << "ERROR: File is empty or too large(10 blocks max)"
+	      << std::endl;
+    return;
+  }
+
+
+  /*
+   * Contiguous
+   */
+  if (type == CONTIGUOUS) {
+    pair contiguous = freeContiguous(blocks);
+    
+    //If there was no contiguous space available
+    if (contiguous.beg < 0) {
+      std::cerr << "ERROR: Not enough contiguous space available" << std::endl;
+      return;
+    }
+    
+    int spaceToAllocate = file_size;
+    for (int i = contiguous.beg; i <= contiguous.end; ++i) {
+      //Get remaining space needed to allocate in MAXBLOCKSIZE size blocks
+      int space = (spaceToAllocate > MAXBLOCKSIZE)
+	? MAXBLOCKSIZE: spaceToAllocate;
+      
+      spaceToAllocate -= MAXBLOCKSIZE;
+      block b;
+      char* cstr = new char[space];
+      file.read(cstr, space);
+      b.bytes = std::string(cstr);
+      WriteBlock(b, i);
+    }
+
+    addToFAS(toFile, contiguous.beg, file_size);
+  }
+
+  /*
+   * CHAINED
+   */ 
+  else if (type == CHAINED) {
+
+    if ( freeSpace() < blocks ) {
+      std::cerr << "ERROR: Not enough space available" << std::endl;
+      return;
+    }
+
+    const int pointerSize = getDigits(MAXBLOCKS);
+    int spaceToAllocate = file_size, start = openSpace.front();
+
+    //Update filesize with additional pointers
+    file_size += (blocks * pointerSize);
+    //Get new blocksize once pointer is placed in.
+    blocks = getBlocks(file_size);
+    
+    for (int i = 0; i < blocks; ++i) {
+      //Get remaining space needed to allocate in 256 size blocks
+      int space = (spaceToAllocate > MAXBLOCKSIZE - pointerSize)
+	? (MAXBLOCKSIZE - pointerSize) : spaceToAllocate;
+
+      //Space needed to allocate
+      spaceToAllocate -= (MAXBLOCKSIZE - pointerSize);
+      block b;
+      char* cstr = new char[space];
+
+      //Write a pointer at the beginning of the file.
+      if (i == blocks - 1) {
+	std::stringstream ss;
+	ss << std::setfill('0') << std::setw(pointerSize) << "";
+	b.bytes = ss.str();
+      }
+      //Otherwise, place at next address.
+      else {
+	std::stringstream ss;
+	ss << std::setfill('0') << std::setw(pointerSize) << openSpace.at(1);
+	b.bytes = ss.str();
+      }
+      file.read(cstr, space);
+      b.bytes += std::string(cstr);
+      WriteRandBlock(b);
+    }
+    addToFAS(toFile, start, file_size);
+  }
+
+  else if (type == INDEXED) {
+    
+  }
+
+
+  
+  file.close();
 }

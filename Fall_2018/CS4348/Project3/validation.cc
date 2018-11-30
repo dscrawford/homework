@@ -1,7 +1,7 @@
 #include "project3.h"
 
 int getType(std::string input) {
-  for (int i = 0; i < input.length(); ++i) {
+  for (unsigned int i = 0; i < input.length(); ++i) {
     input[i] = std::tolower(input[i]);
   }
 
@@ -11,6 +11,8 @@ int getType(std::string input) {
     return INDEXED;
   else if (input == "chained")
     return CHAINED;
+
+  return -1;
 }
 
 int getInt() {
