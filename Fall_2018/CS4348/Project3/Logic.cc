@@ -70,16 +70,35 @@ void Logic::deleteFile(std::string file_name) {
     int pointerSize = getDigits(MAXBLOCKS);
     int address = start;
     do {
-    //Read first pointer
+      //Read first pointer
       int temp = std::stoi(ReadBlock(address).bytes.substr(0, pointerSize));
       DeleteChainedOrIndexedBlock(address);
       address = temp;
     } while (address != 0);
     
   }
-  else if (type == INDEXED) {
+  //
+  //Indexed implementation
+  //
+  else {
+    /* blockIndex = list of indices held by the index file
+     * line = line to read from index file
+     * ss = stringstream for index file
+     */
+    std::vector<int> blockIndex;
+    std::string line;
+    std::stringstream ss(ReadBlock(start).bytes);
+    
+    //Get every address from the input file
+    while (getline(ss,line))
+      blockIndex.push_back(std::stoi(line));
+    
+    //Read each of the address inside the input file
+    for (int i = 0; i < (int)blockIndex.size(); ++i)
+      DeleteChainedOrIndexedBlock(blockIndex[i]);
+    DeleteChainedOrIndexedBlock(start);
   }
-
+  
   b.bytes.erase(p.beg, file_info.length());
   WriteBlock(b, FILEALLOC);
 }
@@ -199,13 +218,15 @@ std::string Logic::getFile(std::string file_name) {
     std::string file_info = ReadBlock(FILEALLOC).bytes.substr(pos.beg,pos.end);
     GetFileAllocData(file_info, start, length);
     int blocks = getBlocks(length);
-    
+
+    //if contiguous allocation type
     if (type == CONTIGUOUS) {
       for (int i = start; i < start + blocks; ++i) {
 	file_data += ReadBlock(i).bytes;
       }
     }
-    
+
+    //if CHAINED allocation type
     else if (type == CHAINED) {
       int pointerSize = getDigits(MAXBLOCKS);
       int address = start;
@@ -215,6 +236,25 @@ std::string Logic::getFile(std::string file_name) {
 	file_data += b.bytes.substr(pointerSize, b.bytes.length());
 	address = std::stoi(ReadBlock(address).bytes.substr(0, pointerSize));
       } while (address != 0);
+    }
+
+    //If indexed Allocation type
+    else {
+      /* blockIndex = list of indices held by the index file
+       * line = line to read from index file
+       * ss = stringstream for index file
+       */
+      std::vector<int> blockIndex;
+      std::string line;
+      std::stringstream ss(ReadBlock(start).bytes);
+
+      //Get every address from the input file
+      while (getline(ss,line))
+	blockIndex.push_back(std::stoi(line));
+
+      //Read each of the address inside the input file
+      for (int i = 0; i < (int)blockIndex.size(); ++i)
+	file_data += ReadBlock(blockIndex[i]).bytes;
     }
   }
   return file_data;
@@ -271,17 +311,17 @@ void Logic::WriteFile(std::string fromFile, std::string toFile) {
 	      << std::endl;
     return;
   }
-  if (blocks > 10 || blocks <= 0) {
-    std::cerr << "ERROR: File is empty or too large(10 blocks max)"
-	      << std::endl;
-    return;
-  }
-
 
   /*
    * Contiguous
    */
   if (type == CONTIGUOUS) {
+    if (blocks > 10 || blocks <= 0) {
+      std::cerr << "ERROR: File is empty or too large(10 blocks max)"
+		<< std::endl;
+      return;
+    }
+    //contiguous = point in the free space bitmap which the file can be allocated
     pair contiguous = freeContiguous(blocks);
     
     //If there was no contiguous space available
@@ -311,20 +351,38 @@ void Logic::WriteFile(std::string fromFile, std::string toFile) {
    * CHAINED
    */ 
   else if (type == CHAINED) {
+    /*
+     * pointerSize = size it takes to add a pointer to a file
+     * spaceToAllocate = how much of the file is left to read
+     * start = where the first block will be placed
+     * file_size_pointers = file size when pointers are added
+     * pos = which position the next byte will be read
+     */
+    const int pointerSize = getDigits(MAXBLOCKS);
+    int spaceToAllocate = file_size, start = openSpace.front(),
+      file_size_pointers = file_size + (blocks * pointerSize), pos = 0;
+    //Get new blocksize once pointer is placed in.
 
+    blocks = getBlocks(file_size_pointers);
+
+    //If not enough freespace to allocate
     if ( freeSpace() < blocks ) {
       std::cerr << "ERROR: Not enough space available" << std::endl;
       return;
     }
 
-    const int pointerSize = getDigits(MAXBLOCKS);
-    int spaceToAllocate = file_size, start = openSpace.front();
+    //If the block is too large
+    if ( blocks <= 0 || blocks > 10 ) {
+      std::cerr << "ERROR: File to large(pointer size could cause large blocks)"
+		<< std::endl;
+      return;
+    }
 
-    //Update filesize with additional pointers
-    file_size += (blocks * pointerSize);
-    //Get new blocksize once pointer is placed in.
-    blocks = getBlocks(file_size);
-    
+    char* cstr = new char[file_size];
+    file.read(cstr,file_size);
+    std::string str = std::string(cstr);
+
+    //Place each block in the disk
     for (int i = 0; i < blocks; ++i) {
       //Get remaining space needed to allocate in 256 size blocks
       int space = (spaceToAllocate > MAXBLOCKSIZE - pointerSize)
@@ -332,8 +390,8 @@ void Logic::WriteFile(std::string fromFile, std::string toFile) {
 
       //Space needed to allocate
       spaceToAllocate -= (MAXBLOCKSIZE - pointerSize);
+
       block b;
-      char* cstr = new char[space];
 
       //Write a pointer at the beginning of the file.
       if (i == blocks - 1) {
@@ -347,17 +405,46 @@ void Logic::WriteFile(std::string fromFile, std::string toFile) {
 	ss << std::setfill('0') << std::setw(pointerSize) << openSpace.at(1);
 	b.bytes = ss.str();
       }
-      file.read(cstr, space);
-      b.bytes += std::string(cstr);
+      
+      b.bytes += str.substr(pos, space);
+      pos += space;
+      
       WriteRandBlock(b);
     }
-    addToFAS(toFile, start, file_size);
+    addToFAS(toFile, start, file_size_pointers);
   }
 
   else if (type == INDEXED) {
-    
-  }
+    /* file_size_index = file_size + index file size
+     * spaceToAllocate = space left in file to read
+     */
+    int file_size_index = file_size + MAXBLOCKSIZE, spaceToAllocate = file_size;
+    std::vector<int> blockIndex;
+    for (int i = 0; i < blocks; ++i) {
+      //Get remaining space needed to allocate in MAXBLOCKSIZE size blocks
+      int space = (spaceToAllocate > MAXBLOCKSIZE)
+	? MAXBLOCKSIZE: spaceToAllocate;
 
+
+      spaceToAllocate -= MAXBLOCKSIZE;
+      block b;
+      char* cstr = new char[space];
+      file.read(cstr, space);
+      b.bytes = std::string(cstr);
+      std::cout << b.bytes << std::endl;
+      blockIndex.push_back(openSpace.front());
+      WriteRandBlock(b);
+    }
+
+    block index_file;
+
+    for (int i = 0; i < (int)blockIndex.size(); ++i) {
+      index_file.bytes += std::to_string(blockIndex[i]) + "\n";
+    }
+    int start = openSpace.front();
+    WriteRandBlock(index_file);
+    addToFAS(toFile, start, file_size_index);
+  }
 
   
   file.close();
