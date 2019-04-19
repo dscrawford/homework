@@ -1,0 +1,194 @@
+//Compiled using Iverilog
+//Made by Team Dan and 3 Others\
+
+//Fulladder simply returns result of two bits + carry sum
+module FullAdder_1bit(input A, B, cin, 
+		      output S, cout);
+   //S = (A xor B) xor cin
+   xor M0(S, A ^ B, cin);
+   //cout = (A & B) | (cin & (A xor B))
+   xor M1(cout, A && B, cin && (A ^ B));
+endmodule // FullAdder_1
+
+//Using out FullAdder 4 times
+//Like other FullAdder, but 4 bits instead.
+module FullAdder_4bit(input [3:0] A, B, input cin,
+		      output [3:0] sum, output cout);
+   wire 			   cin1,cin2,cin3;
+   FullAdder_1bit M0(A[0], B[0], cin, sum[0], cin1);
+   FullAdder_1bit M1(A[1], B[1], cin1,sum[1], cin2);
+   FullAdder_1bit M2(A[2], B[2], cin2,sum[2], cin3);
+   FullAdder_1bit M3(A[3], B[3], cin3,sum[3], cout);
+endmodule // FullAdder_4bit
+
+//Using our FullAdder 8 times
+//8 bit FullAdder
+module FullAdder_8bit(input [7:0] A, B, input cin,
+		      output [7:0] sum, output cout);
+   wire 			   cin1;
+   FullAdder_4bit M0(A[3:0], B[3:0], cin, sum[3:0], cin1);
+   FullAdder_4bit M1(A[7:4], B[7:4], cin1,sum[7:4], cout);
+endmodule // FullAdder_8bit
+
+module FullAdder_16bit(input [15:0] A, B, input cin,
+		       output [15:0] sum, output cout);
+   wire 			     cin1;
+   FullAdder_8bit M0(A[7:0], B[7:0], cin, sum[7:0], cin1);
+   FullAdder_8bit M1(A[15:8], B[15:8], cin1, sum[15:8], cout);
+endmodule // FullAdder_16bit
+
+
+module Mux_16to1(input [3:0] op, input [15:0][15:0] a,
+		 output[15:0] res);
+   reg[15:0] res;
+   always @(*)
+     begin
+	//0000
+	if (~op[3] && ~op[2] && ~op[1] && ~op[0])
+	  res <= a[0];
+	//0001
+	else if (~op[3] && ~op[2] && ~op[1] && op[0])
+	  res <= a[1];
+	//0010
+	else if (~op[3] && ~op[2] && op[1] && ~op[0])
+	  res <= a[2];
+	//0011
+	else if (~op[3] && ~op[2] && op[1] && op[0])
+	  res <= a[3];
+	//0100
+	else if (~op[3] && op[2] && ~op[1] && ~op[0])
+	  res <= a[4];
+	//0101
+	else if (~op[3] && op[2] && ~op[1] && op[0])
+	  res <= a[5];
+	//0110
+	else if (~op[3] && op[2] && op[1] && ~op[0])
+	  res <= a[6];
+	//0111
+	else if (~op[3] && op[2] && op[1] && op[0])
+	  res <= a[7];
+	//1000
+	else if (op[3] && ~op[2] && ~op[1] && ~op[0])
+	  res <= a[8];
+	//1001
+	else if (op[3] && ~op[2] && ~op[1] && op[0])
+	  res <= a[9];
+	//1010
+	else if (op[3] && ~op[2] && op[1] && ~op[0])
+	  res <= a[10];
+	//1011
+	else if (op[3] && ~op[2] && op[1] && op[0])
+	  res <= a[11];
+	//1100
+	else if (op[3] && op[2] && ~op[1] && ~op[0])
+	  res <= a[12];
+	//1101
+	else if (op[3] && op[2] && ~op[1] && op[0])
+	  res <= a[13];
+	//1110
+	else if (op[3] && op[2] && op[1] && ~op[0])
+	  res <= a[14];
+	//1111
+	else if (op[3] && op[2] && op[1] && op[0])
+	  res <= a[15];	  
+     end
+endmodule // Opcode_Mux
+
+module D_FlipFlop(input d, clk, output q);
+   reg q, res;
+   
+   always @(posedge clk)
+     begin
+	res = ~d;
+	if (res == 1) //If not at reset
+	  q = 0;
+	else
+	  q = d;
+     end
+endmodule // D_FlipFlop
+
+module And_4bit(input [3:0] A, B, output [3:0] S);
+   and(S[0],A[0],B[0]);
+   and(S[1],A[1],B[1]);
+   and(S[2],A[2],B[2]);
+   and(S[3],A[3],B[3]);
+endmodule // And_4bit
+
+module And_16bit(input [15:0] A, B, output [15:0] S);
+   And_4bit(S[3:0],A[3:0],B[3:0]);
+   And_4bit(S[7:4],A[7:4],B[7:4]);
+   And_4bit(S[11:8], A[11:8], B[11:8]);
+   And_4bit(S[15:12], A[15:12], B[15:12]);
+endmodule // And_16bit
+       
+module Or_4bit(input [3:0] A,B, output [3:0] S);
+   or(S[0],A[0],B[0]);
+   or(S[1],A[1],B[1]);
+   or(S[2],A[2],B[2]);
+   or(S[3],A[3],B[3]);
+endmodule // Or_4bit
+
+module Or_16bit(input [15:0] A, B, output [15:0] S);
+   Or_4bit(S[3:0],A[3:0],B[3:0]);
+   Or_4bit(S[7:4],A[7:4],B[7:4]);
+   Or_4bit(S[11:8], A[11:8], B[11:8]);
+   Or_4bit(S[15:12], A[15:12], B[15:12]);
+endmodule // Or_4bit
+
+module Xor_4bit(input [3:0] A,B, output [3:0] S);
+   xor(S[0],A[0],B[0]);
+   xor(S[1],A[1],B[1]);
+   xor(S[2],A[2],B[2]);
+   xor(S[3],A[3],B[3]);
+endmodule // Or_4bit
+
+module Xor_16bit(input [15:0] A, B, output [15:0] S);
+   Xor_4bit(S[3:0],A[3:0],B[3:0]);
+   Xor_4bit(S[7:4],A[7:4],B[7:4]);
+   Xor_4bit(S[11:8], A[11:8], B[11:8]);
+   Xor_4bit(S[15:12], A[15:12], B[15:12]);
+endmodule // Or_4bit
+
+module ALU(input [15:0] A, B, input [3:0] op, output cout,
+	   output [15:0] S);
+   wire [15:0][15:0] C;
+   //cout is an empty variable, its not used.
+   wire 	    cout;
+
+   //0: Add the two numbers A and B
+   FullAdder_16bit Adder(A, B, 1'b0, C[0], cout);
+   //1: Subtract the number B from A.
+   FullAdder_16bit Subtractor(A, ~B, 1'b1, C[1], cout);
+   //2: FILLER FOR SHIFT LEFT
+   //3: FILLER FOR SHIFT RIGHT
+   //4: AND TOGETHER
+   and(C[4],A,B);
+   //5: OR TOGETHER
+   //6: XOR TOGETHER
+   //7: NOT A
+   //8: NAND
+   //9: NOR
+   
+   
+   
+   Mux_16to1 Mux(op, C, S);   
+endmodule // ALU
+
+
+module test_bench ;
+   reg [15:0]  A,B;
+   reg [3:0]   op;
+   wire	       cout;
+   wire [15:0] S;
+      
+   ALU M0(A,B,op,cout,S);
+   
+   initial begin
+      A  <= 16'b0100000000000101;
+      B  <= 16'b0100000000000101;
+      op = 4'b0000;
+      
+      #1;
+      $display("%b", ~S);
+   end
+endmodule
