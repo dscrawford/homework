@@ -1,0 +1,12 @@
+In lab 3 exercise 1, the computer is asking for an input of a:
+character, then an integer, then a character, then a string, then a float
+Whenever the values x1234yjohn 10.5 are input, the computer reads the first character then see's
+the integer and has an error. Because of this, the computer just runs to the next line and then the
+integers are recorded until the character comes up. So basically, the computer is doing this because
+it is running the next line after it doesn't understand the input value, so in turn the computer goes
+to the next line and continues the program. Although, when 189j110.5 is input into the command line,
+the computer has considered the values 110.5 to be a string. This can be explained because when the computer
+asks for a string, it is a completely unformated number that can not be used in calculations but could be
+printed out in the command line. For example, while a computer would change a number like int 2.10 to just 2,
+when it is a string the computer will print out the precise value inside of it, ex: string "3.14159". So the computer
+has registered the last number as a string, so the program is waiting for a float number to be input afterwards.

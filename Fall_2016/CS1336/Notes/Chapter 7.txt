@@ -1,0 +1,166 @@
+7.1
+
+Array: Variable that can store information
+
+The definition
+ int tests[5];
+ allocates to 5 elements.
+
+ In the definition int tests [5];
+	int is the data type
+	tests is the name of the array
+	5, in [5], is the size declarator
+	** The size of an array is (number of elements) * (size of each element)
+	
+	Named constants are commonly used as size declarators
+	
+	const int SIZE = 5;
+	int tests[SIZE];
+	
+	This eases program maintenance when the size of the array needs to be changed
+	
+	
+7.2
+
+Accessing Array Elements
+
+Each element in an array is assigned a unique subscript
+Subscript start at 0
+
+Array elements can be used as regular variables
+Arrays must be accessed via individual elements
+
+Default initialization
+
+Global array -> All elements initialized to 0 by default
+Local array -> All elements uninitialized by default
+
+7.3
+
+No bounds Checking in C++
+
+When you use a value as an array subscript, C++ does not check it to make sure it is a valid subscript.
+	Other words, you can use subscripts that are beyond the bounds of the array;
+Don't use invalid subscripts
+	These can corrupt other memory locations, crash the program, or lock up the computer, then cause elusive bugs.
+
+7.4
+
+Array Initialization
+
+Arrays can be initialized with an initialization list:
+	const int SIZE = 5;
+	int tests[SIZE] = {79, 82, 91, 77, 84}
+	
+The values are stored in the array in the order in which they appear in the list
+The initialization list cannot exceed the array size
+
+7.5
+
+Implicit array sizing
+
+Can determine array size by the size of the initialization list
+	Must use either array size declarator or initialization list at array definition.
+	
+7.6
+
+Processing Array Content
+
+Array elements can be treated as variables of the same type as the array
+When using ++, -- operators, DONT CONFUSE THE ELEMENT WITH THE SUBSCRIPT
+	tests[i]++; //add 1 to tests[i]
+	tests[i]++ // increment i, no effect on tests
+	
+Array Assignment
+
+To copy one array to another,
+	Dont try to assign one array to the other:
+		newTests = tests; //wont work
+	
+	Instead, assign element by element
+	
+Can display contents of a character by sending its name to cout
+	char fName[] = "Henry";
+	cout << fName << endl;
+	
+	ONLY works with character arrays
+	
+	will keep printing until it see's a null character
+	
+Printing the contents of an array
+	For other types of arrays, you must print element-by-element:
+		for (i=0; i < ARRAY_SIZE; i++)
+			cout << tests[i] << endl;
+		
+
+Summing and Averaging Array Elements
+
+Use a simple loop to add together array elements.
+	Once summed, can compute the average
+		average = sum / SIZE;
+Partially-Filled Arrays
+	If it is unknown how much an array will be holding
+		Make the array large enough to hold largest expended number of elements
+		Use counter variable to keep track of the number of items stored in the array.
+		
+Comparing Arrays
+To compare two arrays, you must compare element by elements
+	
+7.7
+
+Using Parallel Arrays
+
+7.8
+
+Arrays as Function Arguments
+
+Array names in functions are like reference variables - changes made to array in a fucntion are reflected in actual array in calling functions
+Need to exercise caution that array is not inadvertently changed by a functions
+
+Using const Array Parameters
+
+Data protection is a very important consideration in computer programming.
+When we pass an array into a function in C++, we can use the const modifier to specify that the data can’t be changed.
+
+7.9
+
+Two-Dimensional Arrays
+
+Can define one array for multiple sets of data
+Like a table in a spreadsheet
+Use two size declarators in definitions:
+	const int ROWS = 4, COLS = 3;
+	int exams [ROWS][COLS];
+Pass it along as a parameter
+	Use empty [] for row, size declarator for column in prototype, header:
+	const int COLS = 2;
+	// Prototype
+	void getExams(int [][COLS], int);
+	
+	//Header
+	void getExams(int exams[][COLS], int rows)
+7.10
+
+Arrays with three or more dimensions
+
+Can define arrays with any number of dimensions
+	short rectSolid[2][3][5];
+	double timeGrid[3][4][3][4];
+When used as parameter, specify all but 1st dimension in prototype:
+	int function(thing[][3][4][5])
+7.12
+
+Introduction to the STL vector
+
+A data type defined in Standard Template Library
+Can hold values of any type:
+	vector<int> scores;
+Automatically adds space as more is needed.
+
+Must include #include<vector>
+Declare a vector to hold int element:
+	vector<int> scores;
+Declare a vector with initial size 30:
+	vector<int> scores(30);
+Use pop_back member to remove last element from vector
+	scores.pop_back

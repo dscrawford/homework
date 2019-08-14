@@ -1,0 +1,60 @@
+Chapter 6
+	Sending Data into a Function
+	Values passed to function are arguments
+	Variables in functions that hold values passed as arguments are parameters
+	EX: Function with a parameter variable
+	Void stuff(int c)
+	Int is a parameter
+	A parameter can be called a formal argument
+	An argument can be called an actual argument
+
+	Boolean Value
+		Can return true or false
+	Local and Global Variables
+		Variables inside a function are called local
+		Variables defined in function are hidden, other functions may have separate, distinct variables with the same name
+	Local Variable Lifetime
+		Local variables only exist when the function is executing
+		When the function is executed, local variables and parameter variables are created in memory.
+		When the function ends, local variables and parameters are destroyed
+		This means any value stored in local variable is lost between calls to the function which the variable is declared.
+		Global variables are automatically initialized to 0
+		Local variables are not automatically initialized, initialized by programmer.
+	Reason to actually use global variable:
+		Int funcCounter;
+		Void func(----);
+		Int main()
+		{
+		func (----)
+		func (----)
+		}
+	Use global variable in here so that a value goes unchanged, is not destroyed
+	Using reference Variables as Parameters
+
+Reference Variable Notes
+	Each reference parameter must contain &
+
+	Default arguments
+		An argument that is passed automatically to a parameter if the argument is missing on the function call.
+		Must be a constant declared in prototype
+		Void evenorOdd(int = 0);
+		Multiparameter arguments have have default arguments for some or all of them
+	
+6.16
+Stubs and Drivers
+Stub: A dummy function used in place of an actual function
+	Displays a message indicating it was called, may also display parameters
+Driver: A function that tests another function by calling it
+	Various arguments are passed and return values are tested
+
+Using function in Menu Driven Programs
+	Functions can be used	
+		to implement user choices from menu
+		to implement general-purpose tasks
+The Conditional Operator
+	Format: expr ? expr : expr;
+		x <0 ? y=10 : z=20;
+		1----- 2----- 3----
+		1. Expression to be tested
+		2. Executes if first expression is true
+		3. Executes if first expression is false

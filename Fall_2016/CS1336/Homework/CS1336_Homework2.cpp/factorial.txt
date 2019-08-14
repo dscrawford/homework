@@ -1,0 +1,60 @@
+Number: 1
+Factorial: 1
+
+Number: 2
+Factorial: 2
+
+Number: 3
+Factorial: 6
+
+Number: 4
+Factorial: 24
+
+Number: 5
+Factorial: 120
+
+Number: 6
+Factorial: 720
+
+Number: 7
+Factorial: 5040
+
+Number: 8
+Factorial: 40320
+
+Number: 9
+Factorial: 362880
+
+Number: 10
+Factorial: 3628800
+
+Number: 11
+Factorial: 39916800
+
+Number: 12
+Factorial: 479001600
+
+Number: 13
+Factorial: 6227020800
+
+Number: 14
+Factorial: 87178291200
+
+Number: 15
+Factorial: 1307674368000
+
+Number: 16
+Factorial: 20922789888000
+
+Number: 17
+Factorial: 355687428096000
+
+Number: 18
+Factorial: 6402373705728000
+
+Number: 19
+Factorial: 121645100408832000
+
+Number: 20
+Factorial: 2432902008176640000
+

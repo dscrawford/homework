@@ -1,0 +1,20 @@
+total0
+subtract 3
+total-3
+add 25
+total22
+multiply 5
+total110
+divide 9
+total12.2222
+clear
+total0
+add 5
+total5
+sqrt 
+total2.23607
+pow 20
+total9.76563e+006
+clear
+total0
+exit

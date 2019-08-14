@@ -1,0 +1,73 @@
+Do while loop endlessly executes as long as the user or program allows it to(as long as expression is true)
+Can stop invalid inputs
+To stop bad inputs from messing up code:
+	if (cin >> dvalue)
+	{
+	//valid double
+	}
+	else {
+	string dummy;
+	cin.clear();
+	getline(cin,dummy);
+	}
+	
+getline(cin, strvalue)) purges the value, if you use a dummy string.
+cin.clear() gets rid of the error state.
+string string gives a key value for analysing the program.
+
+5.6 The for Loop
+
+1) Perform initialization
+2) Evaluate test expression
+	If true, execute statement or block
+	If false, terminate loop expression
+Perform the initialization expression
+A Pre test loop
+
+Comma operator:
+if(x>10, x<100)
+evaluates x>10 as true or false,
+then sees the comma and erases the true/false
+evaluates x>100 as the final value
+
+Keeping a running total
+running total: accumulated sum of numbers from each repetition of loop
+accumulator: variable that holds running tool
+
+5.11 Using files and Data Storage
+	Use files instead of keyboard, monitor screen for program input.
+	Use fstream header file for file access
+	
+	File stream types:
+	ifstream: input
+	ofstream: output
+	fstream: input from or output to a file
+	Define file stream objects:
+	ifstream infile;
+	ofstream outfile;
+	
+	Opening Files
+	Create a link between file name and file stream object
+	Output file will be create if necessary; existiing file will be erased first
+	Input file must exist for open to work
+	
+	USEFUL COMMANDS:
+	!infile = infile.fail()         --- Didnt open properly
+	inFile.eof()                    --- End of file
+	
+	Can use output file object and << to send data to file
+	EX: outfile << "Inventory report";
+	
+	Using loops to process Files
+	
+	the stream extraction operator >> returns true when a value was successfully read, false otherwise
+	Can be tested in a while loop to continue execution as long as they are read from the file
+	
+	Close
+		Use the close member function:
+		infile.close();
+		outfile.close();
+	
+	Letting User Specify a filename
+		You can pass a string object as an argument to a file stream objects open member function.
+	

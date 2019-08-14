@@ -1,6 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node3" href="$classTCLAP_1_1ArgException.html" title="A simple class that defines and argument exception. " alt="" coords="135,59,284,88"/>
-<area shape="rect" id="node5" href="$classTCLAP_1_1ArgParseException.html" title="Thrown from within the child Arg classes when it fails to properly parse the argument it has been pas..." alt="" coords="351,5,535,35"/>
-<area shape="rect" id="node7" href="$classTCLAP_1_1CmdLineParseException.html" title="Thrown from CmdLine when the arguments on the command line are not properly specified, e.g. " alt="" coords="335,59,551,88"/>
-<area shape="rect" id="node9" href="$classTCLAP_1_1SpecificationException.html" title="Thrown from Arg and CmdLine when an Arg is improperly specified, e.g. " alt="" coords="340,112,545,141"/>
-</map>

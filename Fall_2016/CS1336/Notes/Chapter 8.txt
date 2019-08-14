@@ -1,0 +1,20 @@
+Linear Search
+	Also called the sequential search
+	
+Binary Search
+	Requires array elements to be in order
+	
+	1. Divides the array into three sections:
+		Middle elements
+		Elements on one of of middle elements
+		Elements on other side of middle
+		
+	2.	If the middle element in the correct value, its done
+		Otherwise, go to step 1 using only half of the array that could contain the correct value
+	
+	3. Continue steps 1. and 2. until either the value is found and there are no more elements to examine.
+	Benefits:
+		More efficient than a linear search
+		For array of N elements, performs at most log_2(N) comparisons
+	Disavanttages:
+		Requires that array elements be sorted

@@ -1,4 +1,0 @@
-<map id="TCLAP::CmdLine::xorAdd" name="TCLAP::CmdLine::xorAdd">
-<area shape="rect" id="node3" href="$classTCLAP_1_1XorHandler.html#a76f156bf36a8aede334801aa242f31b9" title="Add a list of Arg*&#39;s that will be xor&#39;d together. " alt="" coords="231,5,396,35"/>
-<area shape="rect" id="node5" href="$classTCLAP_1_1CmdLine.html#a94c511d4735ad9b8c97edaa3827f8bbf" title="Adds an argument to the list of arguments to be parsed. " alt="" coords="236,59,391,88"/>
-</map>

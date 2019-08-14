@@ -1,0 +1,76 @@
+Making Decisions
+------------------------------------------
+------------------------------------------
+------------------------------------------
+Relational Operator		Meaning
+>							Greater than
+<							Less than
+>=							greater than or equal to
+<=							less than or equal to
+==							equal to
+!=							not equal to
+&&							Logical AND
+||							Logical OR
+= += -=
+*= /= %=					Assignment and combined assginment operators
+- Returns back boolean values(true or false)
+- DON'T FRIGGIN CONFUSE = AND ==
+
+-(INSERT ORDER OF PRECEDENCE HERE)
+
+Short Circuiting
+	Perform short circuit evaluation of expressions
+	Whether or not second operator is evaluated depends on the result of the first
+		Logical AND will evaluate to false without checking the second operand
+		Logical OR will evaluate to true without checking the second operand if the first operand is true
+
+4.11 Validating User Input
+Input validation: inspecting input data to determine whether it is acceptable
+The ASCII value of 'A' (65) is less than 'B'(66)
+Lowercase letter have larger values then their uppercase ones
+'Z' < 'a'
+Strings are compared using their ASCII values
+
+string name1 = "Mary";
+string name2 = "Mark";
+name1 > name2       //true
+name1 <= name2      //false
+name1 != name2      //true
+name1 < "Mary Jane" //true
+
+4.13 The Conditional Operator
+	Format: expr ? expr : expr;
+		x <0 ? y=10 : z=20;
+		1----- 2----- 3----
+		1. Expression to be tested
+		2. Executes if first expression is true
+		3. Executes if first expression is false
+4.14 The switch statement
+Switch Statement
+	Used to select among statements from several alternatives
+	Can be used instead of if/else if statements
+		switch (expression) //integer
+		{
+		case exp1: statement1;
+		case exp2: statement2;
+		...
+		case expn: statementn;
+		default: statement(n+1)
+		}
+	1) evaluates
+	2) compared expressions
+	3)
+	4)
+	break statement used in the switch statement to work.
+	switch statements are useful for menu-driven programs.
+4.15 More About Blocks and Scope
+	Scope of a variable is the block in which it is defined, from the point of definition to the end of the block
+	Usually defined at the beginning of function
+	May be defined close to first used
+	
+	Variables with the same name
+	Variables defined inside { } have local or block scope
+	When inside a block, can define the variables as in the outer block.
+		When in inner block, outer definition is not available
+	
+	

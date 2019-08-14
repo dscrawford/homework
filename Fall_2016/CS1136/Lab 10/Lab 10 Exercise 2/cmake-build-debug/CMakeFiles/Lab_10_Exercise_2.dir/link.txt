@@ -1,0 +1,1 @@
+/Library/Developer/CommandLineTools/usr/bin/c++   -g -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/Lab_10_Exercise_2.dir/Lab10_Exercise2.cpp.o  -o Lab_10_Exercise_2 

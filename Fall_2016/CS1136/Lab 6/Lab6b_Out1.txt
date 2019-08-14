@@ -1,0 +1,10 @@
+Results:
+If 1: True
+If 2: False
+If 3: False
+If 4: True
+Reasoning:
+If 1: Because (b+2) = (3+2), and d = 5, the greater than or equal to operand is true
+If 2: Because '5' is a char and not a variable, it is not equal to d(5).
+If 3: Because (c -2 *a) is not a condition then it is impossible to be true.
+If 4: Because this condition uses "=" instead of "==", the statement makes d = 4 then comes out as true.
