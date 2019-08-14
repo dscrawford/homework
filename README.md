@@ -52,8 +52,7 @@ Collection of all homeworks done at UTD
 
 \**CS 3377 - C/C++ Programming in a UNIX Environment*
 
-         Learned how to make C++ programs from scratch inside emacs/vim, projects include making a compiler (Program 4)
-         and making a file health program (Program 5). Starting from project 3, all programs can be compiled using `make`
+    	 Learned how to make C++ programs from scratch inside emacs/vim, projects include making a compiler (Program 4) and making a file health program (Program 5). Starting from project 3, all programs can be compiled using `make`
 
 *CS 3354 - Software Engineering*
 
@@ -61,11 +60,11 @@ Collection of all homeworks done at UTD
 
 *CS 4337 - Organization of Programming Languages*
 
-         Involved using different programming paradigms to write certain functions. Programs are not too interesting here.
+    	 Involved using different programming paradigms to write certain functions. Programs are not too interesting here.
 
 \**CS 4348 - Operating Systems Concepts*
 
-         These programs reflect a concept in operating systems and try to either simulate or utilize these concepts.
+    	 These programs reflect a concept in operating systems and try to either simulate or utilize these concepts.
 
 *CS 4384 - Automata Theory*
 
@@ -73,7 +72,7 @@ Collection of all homeworks done at UTD
 
 *ECS 3390 - Professional and Technical Communication*
 
-     	 Sortof a busy work class not worth your time
+    	 Sortof a busy work class not worth your time
 
 \**CS 4341 - Digital Logic and Computer Design*
 
@@ -85,5 +84,4 @@ Collection of all homeworks done at UTD
 
 \**CS 4361 - Computer Graphics*
 
-         Graphics projects designed using Java awt. These are neat projects because they are actually visualizing
-         things. Some of my most fun projects are in here. 
+    	 Graphics projects designed using Java awt. These are neat projects because they are actually visualizing things. Some of my most fun projects are in here. 
