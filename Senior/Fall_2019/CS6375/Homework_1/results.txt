@@ -1,0 +1,90 @@
+Growing tree on train_c300_d100.csv
+Time taken to grow tree:  0:00:31.898376
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c300_d100.csv: 0.457286432160804
+Accuracy with trees using depth-based pruning trained on Entropy in test_c300_d100.csv: 0.44221105527638194
+Accuracy with naive trees trained on Entropy in test_c300_d100.csv: 0.44221105527638194
+Growing tree on train_c300_d100.csv
+Time taken to grow tree:  0:00:31.983138
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c300_d100.csv: 0.457286432160804
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c300_d100.csv: 0.44221105527638194
+Accuracy with naive trees trained on Variance Impurity in test_c300_d100.csv: 0.44221105527638194
+Accuracy with random forests in test_c300_d100.csv: 0.4321608040201005
+Growing tree on train_c300_d1000.csv
+Time taken to grow tree:  0:04:47.944414
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c300_d1000.csv: 0.5662831415707854
+Accuracy with trees using depth-based pruning trained on Entropy in test_c300_d1000.csv: 0.5852926463231616
+Accuracy with naive trees trained on Entropy in test_c300_d1000.csv: 0.5637818909454727
+Growing tree on train_c300_d1000.csv
+Time taken to grow tree:  0:04:55.410525
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c300_d1000.csv: 0.5642821410705353
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c300_d1000.csv: 0.5882941470735368
+Accuracy with naive trees trained on Variance Impurity in test_c300_d1000.csv: 0.5662831415707854
+Accuracy with random forests in test_c300_d1000.csv: 0.5087543771885943
+Growing tree on train_c300_d5000.csv
+Time taken to grow tree:  0:22:16.936665
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c300_d5000.csv: 0.5971597159715971
+Accuracy with trees using depth-based pruning trained on Entropy in test_c300_d5000.csv: 0.5865586558655865
+Accuracy with naive trees trained on Entropy in test_c300_d5000.csv: 0.5914591459145915
+Growing tree on train_c300_d5000.csv
+Time taken to grow tree:  0:23:01.527995
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c300_d5000.csv: 0.5893589358935893
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c300_d5000.csv: 0.5872587258725872
+Accuracy with naive trees trained on Variance Impurity in test_c300_d5000.csv: 0.5893589358935893
+Accuracy with random forests in test_c300_d5000.csv: 0.5231523152315232
+Growing tree on train_c500_d100.csv
+Time taken to grow tree:  0:00:29.314162
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c500_d100.csv: 0.5577889447236181
+Accuracy with trees using depth-based pruning trained on Entropy in test_c500_d100.csv: 0.6030150753768844
+Accuracy with naive trees trained on Entropy in test_c500_d100.csv: 0.6030150753768844
+Growing tree on train_c500_d100.csv
+Time taken to grow tree:  0:00:33.086807
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c500_d100.csv: 0.5628140703517588
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c500_d100.csv: 0.5778894472361809
+Accuracy with naive trees trained on Variance Impurity in test_c500_d100.csv: 0.5778894472361809
+Accuracy with random forests in test_c500_d100.csv: 0.48743718592964824
+Growing tree on train_c500_d1000.csv
+Time taken to grow tree:  0:04:35.250187
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c500_d1000.csv: 0.5807903951975988
+Accuracy with trees using depth-based pruning trained on Entropy in test_c500_d1000.csv: 0.5552776388194097
+Accuracy with naive trees trained on Entropy in test_c500_d1000.csv: 0.5712856428214107
+Growing tree on train_c500_d1000.csv
+Time taken to grow tree:  0:04:50.026059
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c500_d1000.csv: 0.5772886443221611
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c500_d1000.csv: 0.5552776388194097
+Accuracy with naive trees trained on Variance Impurity in test_c500_d1000.csv: 0.5642821410705353
+Accuracy with random forests in test_c500_d1000.csv: 0.503751875937969
+Growing tree on train_c500_d5000.csv
+Time taken to grow tree:  0:20:59.162324
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c500_d5000.csv: 0.5982598259825983
+Accuracy with trees using depth-based pruning trained on Entropy in test_c500_d5000.csv: 0.6078607860786078
+Accuracy with naive trees trained on Entropy in test_c500_d5000.csv: 0.6078607860786078
+Growing tree on train_c500_d5000.csv
+Time taken to grow tree:  0:21:32.201956
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c500_d5000.csv: 0.6025602560256026
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c500_d5000.csv: 0.6080608060806081
+Accuracy with naive trees trained on Variance Impurity in test_c500_d5000.csv: 0.6080608060806081
+Accuracy with random forests in test_c500_d5000.csv: 0.5255525552555256
+Growing tree on train_c1000_d100.csv
+Time taken to grow tree:  0:00:34.170970
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c1000_d100.csv: 0.5175879396984925
+Accuracy with trees using depth-based pruning trained on Entropy in test_c1000_d100.csv: 0.5527638190954773
+Accuracy with naive trees trained on Entropy in test_c1000_d100.csv: 0.5125628140703518
+Growing tree on train_c1000_d100.csv
+Time taken to grow tree:  0:00:34.068998
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c1000_d100.csv: 0.5175879396984925
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c1000_d100.csv: 0.5226130653266332
+Accuracy with naive trees trained on Variance Impurity in test_c1000_d100.csv: 0.5226130653266332
+Accuracy with random forests in test_c1000_d100.csv: 0.46733668341708545
+Growing tree on train_c1000_d1000.csv
+Time taken to grow tree:  0:04:25.304218
+Accuracy with trees using reduced-error pruning trained on Entropyin test_c1000_d1000.csv: 0.6118059029514757
+Accuracy with trees using depth-based pruning trained on Entropy in test_c1000_d1000.csv: 0.6173086543271635
+Accuracy with naive trees trained on Entropy in test_c1000_d1000.csv: 0.6173086543271635
+Growing tree on train_c1000_d1000.csv
+Time taken to grow tree:  0:04:34.808111
+Accuracy with trees using reduced-error pruning trained on Variance Impurityin test_c1000_d1000.csv: 0.6118059029514757
+Accuracy with trees using depth-based pruning trained on Variance Impurity in test_c1000_d1000.csv: 0.6123061530765382
+Accuracy with naive trees trained on Variance Impurity in test_c1000_d1000.csv: 0.6138069034517258
+Accuracy with random forests in test_c1000_d1000.csv: 0.5312656328164082
+Growing tree on train_c1000_d5000.csv
+Time taken to grow tree:  0:19:54.124129
