@@ -88,9 +88,11 @@ else:
             sys.exit(1)
 
 
-# In[34]:
+# In[45]:
 
 
+#learner = 'e'
+#fileStr = 'c1000_d5000'
 trainFilename = "train_" + fileStr + ".csv"
 validFilename = "valid_" + fileStr + ".csv"
 testFilename = "test_"  + fileStr + ".csv"
@@ -99,7 +101,7 @@ valid = pd.read_csv("./all_data/" + validFilename)
 test  = pd.read_csv("./all_data/" + testFilename)
 
 
-# In[11]:
+# In[48]:
 
 
 train.columns = valid.columns = test.columns = list(range(0, len(train.columns)))
@@ -305,18 +307,18 @@ def Analyze_Prune_Trees(V, T, tA, tree):
                   " in " + testFilename + ":"
                   ,Get_Tree_Accuracy(T, tA, tree))
         elif prune in dbpNames:
-            dbpTree = Depth_Based_Prune(V, tA, tree)
+            dbpTree = Depth_Based_Prune(V, tA,tree)
             print("Accuracy with trees using depth-based pruning trained on " + impurityFunctionName +
                   " in " + testFilename + ":"
                   ,Get_Tree_Accuracy(T, tA, dbpTree))
         elif prune in repNames:
             repTree = Reduced_Error_Prune(V, tA, tree)
             print("Accuracy with trees using reduced-error pruning trained on " + impurityFunctionName +
-                  "in " + testFilename + ":"
+                  " in " + testFilename + ":"
                   ,Get_Tree_Accuracy(T, tA, repTree))            
 
 
-# In[42]:
+# In[67]:
 
 
 if (learner in dtNames):
@@ -328,11 +330,12 @@ if (learner in dtNames):
 else:
     from sklearn.model_selection import train_test_split
 
-    X = train.drop(columns=[1])
-    y = train[1]
+    newTrain = train.append(valid)
+    X = newTrain.drop(columns=[1])
+    y = newTrain[1]
 
     from sklearn.ensemble import RandomForestClassifier
-    model = RandomForestClassifier()
+    model = RandomForestClassifier(n_estimators=100)
     model.fit(X, y)
     predict = model.predict(test.drop(columns=[1]))
 
