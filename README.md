@@ -26,7 +26,10 @@ Collection of all homeworks done at UTD
 		- CS 4341 - Digital Logic and Computer Design
 		- CS 4347 - Introduction to Database Systems
 		- CS 4361 - Computer Graphics
-
+- Senior
+	- Fall_2019
+		- CS 6375 - Machine Learning
+		- CS 6313 - Statistical Methods in Data Science
 # Class Descriptions
 *\* - interesting projects*
 
