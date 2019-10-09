@@ -13,13 +13,14 @@ neg.f_x = function(x, theta) {
 }
 
 #Get numerical estimates from optim()
-theta.numerical.est = unlist(lapply(X, function(x) {optim(par = 0, f_x, x = x, method = "Brent", lower=-10, upper=10)$par[1]}))
+theta.numerical.est = unlist(lapply(X, function(x) {optim(par = 0, neg.f_x, x = x, method = "Brent", lower=-10, upper=10, hessian=TRUE)}))
+theta.numerical.est[1]
 print(theta.numerical.est)
 
 #To estimate confidence interval, assume theta.numerical.est is normal and theta is an unbiased estimator.
 confidence = 0.95
 alpha = (1 - 0.95)
-standard.error = sd(theta.numerical.est)
+standard.error = h
 #If theta estimator is normal, then estimator is mean of sample
 estimator = mean(theta.numerical.est)
 
