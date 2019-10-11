@@ -71,7 +71,6 @@ class Collaborative_Model:
     user_ids  = None
     movie_ids = None
     ratings   = None
-    #ui        = None
     all_users_avg  = None
     all_users_vote = None
     all_users_movies = None
@@ -84,8 +83,14 @@ class Collaborative_Model:
         self.movie_ids = np.array(train['MovieID'].values)
         self.ratings   = train['Rating'].values
         unique_users = np.unique(self.user_ids)
+        self.ui = {user_id : np.argwhere(user_id == self.user_ids).flatten()
+                   for user_id in unique_users}
         self.all_users_avg = dict(train.groupby('UserID')['Rating'].mean())
-        self.all_users_vote = dict(train.groupby('UserID')['MovieID', 'Rating'].apply(lambda x: dict(x.values.tolist())))
+        self.all_users_vote = {user_id :
+                               {movie_id : self.ratings[self.ui[user_id]]
+                                [np.argwhere(self.movie_ids[self.ui[user_id]] ==movie_id)][0][0] 
+                                for movie_id in self.movie_ids[self.ui[user_id]]}
+                               for user_id in unique_users}
         self.all_users_movies = dict(train.groupby('UserID')['MovieID'].apply(lambda x: set(x.values)))
         
     def Predict_Data(self, test):
