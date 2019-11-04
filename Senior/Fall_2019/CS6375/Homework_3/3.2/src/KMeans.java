@@ -96,7 +96,7 @@ public class KMeans {
         ArrayList<Color> rgbList = new ArrayList<>();
         for (int value : rgb) rgbList.add(new Color(value));
         ArrayList<Color> copy = new ArrayList<>(rgbList);
-        Collections.shuffle(copy);
+        Collections.shuffle(copy, new Random(1234));
         List<Color> c = copy.subList(0, k);
 
         ArrayList<ArrayList<Color>> clustersList = new ArrayList<>(c.size());
