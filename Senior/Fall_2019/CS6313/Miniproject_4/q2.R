@@ -5,8 +5,8 @@ options(digits=5)
 set.seed(1234)
 volt = read.csv('VOLTAGE.csv')
 
-remoteV = volt$voltage[volt$location == 1]
-localV  = volt$voltage[volt$location == 0]
+remoteV = volt$voltage[volt$location == 0]
+localV  = volt$voltage[volt$location == 1]
 qqnorm(localV, main = "Local location voltages")
 qqline(localV)
 hist(localV, breaks=10, xlab = 'voltage', main = 'Local voltage histogram')
@@ -14,6 +14,8 @@ hist(localV, breaks=10, xlab = 'voltage', main = 'Local voltage histogram')
 qqnorm(remoteV, main = "Remote location voltages")
 qqline(remoteV)
 hist(remoteV, breaks=10, xlab = 'voltage', main = 'Remote voltage histogram')
+
+boxplot(localV, remoteV, horizontal = TRUE)
 
 x1bar = mean(remoteV)
 x2bar = mean(localV)
@@ -27,3 +29,4 @@ alpha = 0.05
 CI = diff + c(-1, 1) * qnorm(1 - alpha / 2) * se
 
 cat("Confidence Interval: [", CI[1], ",", CI[2], "]")
+
