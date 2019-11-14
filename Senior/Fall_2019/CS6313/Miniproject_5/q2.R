@@ -1,52 +1,39 @@
 require(boot)
 rm(list = ls())
 options(digits=5)
+set.seed(1234)
 
 in_confidence_interval = function(mean, CI) {
   return(mean >= CI[1] & mean <= CI[2])
 }
 
-capture_percentage = function(B, t) {
-  CI = percentile_confidence_interval(B$t)
-  return(sum(in_confidence_interval(t, CI)) / length(B$t))
+generate_sample = function(D, lambda) {
+  n = length(D)
+  return(rexp(n = n, rate = lambda))
 }
 
-generate_sample = function(D, par) {
-  return(rexp(par[1], par[2]))
+# Calculates bootstrap percentile and large sample confidence interval.
+Confidence_Intervals = function(n, lambda) {
+  b  = 999
+  D  = rexp(n, lambda)
+  x  = mean(D)
+  s  = sd(D)
+  perc = boot.ci(boot(data = D, statistic = mean, R=b, sim = "parametric", ran.gen = generate_sample, mle = 1 / x, ), type = "perc")$perc[c(4,5)]
+  norm = x + c(-1, 1) * qnorm(0.975) * s / sqrt(n)
+  return(c(norm, perc))
 }
 
-percentile_confidence_interval = function(D) {
-  est = sort(D)
-  n = length(est)
-  alpha = 0.05
-  return(c(est[alpha / 2 * n + 1], est[(1 - alpha/2) * n + 1]))
-}
-
-run_test = function(n, lambda, MC) {
-  tMean = 1 / lambda
-  B = replicate(5000, boot(data = rexp(n, lambda), 
-                           statistic = mean, R=b, sim = "parametric", 
-                           ran.gen = generate_sample, mle = c(n, lambda)))
-  
+MC_Coverage_Probability = function(n, lambda) {
+  B = t(replicate(5000, Confidence_Intervals(n, lambda)))
+  norm = sum(apply(B, 1, function(x) in_confidence_interval(1 / lambda, x[c(1,2)]))) / 5000
+  perc = sum(apply(B, 1, function(x) in_confidence_interval(1 / lambda, x[c(3,4)]))) / 5000
+  return(c(norm, perc))
 }
 
 df = expand.grid(n=c(5, 10, 30, 100), lambda=c(0.01, 0.1, 1, 10))
-alpha = 0.05
-b     = 999
-MC = replicate(999, mean(rexp(100, 1/100)))
 
-results = apply(df, 1, function(x) run_test(as.numeric(x[1]), as.numeric(x[2])))
-
-n = 5
-lambda = 0.01
-B = replicate(5000, boot(data = rexp(n, lambda), 
-                         statistic = mean, R=b, sim = "parametric", 
-                         ran.gen = generate_sample, mle = c(n, lambda)))
-
-#apply(df, 1, FUN=function(x) boot(unlist(df$sample),
-#                                  mean, lambda = as.numeric(df[2]), R=b))
-
-# What to do:
-# Generate 5000 means
-# Check from each generated mean if it is captured by the bootstrap interval
-
+results = apply(df, 1, function(x) MC_Coverage_Probability(as.numeric(x[1]), as.numeric(x[2])))
+norm = results[1,]
+perc = results[2,]
+print(data.frame(df, normal_coverage_prob = norm, percentile_coverage_prob = perc))
+print(summary(norm - perc))
