@@ -1,3 +1,6 @@
 [submodule "Senior/Fall_2019/CS4397/EmbeddedSystemsProject"]
 	path = Senior/Fall_2019/CS4397/EmbeddedSystemsProject
 	url = git@github.com:dscrawford/EmbeddedSystemsProject.git
+[submodule "Senior/Fall_2019/CS6375/MachineLearningProject"]
+	path = Senior/Fall_2019/CS6375/MachineLearningProject
+	url = git@github.com:dscrawford/MachineLearningProject.git
