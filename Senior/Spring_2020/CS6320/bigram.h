@@ -9,12 +9,15 @@ using namespace std;
 
 class Bigram {
  private:
-  vector<string>   words;
-  map<string, int> wordC;
+  vector<string>      corpuses;
+  vector<string>      words;
+  vector<vector<int>> bigramCounts;
 
-  void doRegex(string, string);
+  vector<string> regexParse(string, string);
+  vector<int> findPreviousWordCount(string);
  public:
   Bigram(string);
+  void train(string);
 };
 
 #endif /* BIGRAM_H */
