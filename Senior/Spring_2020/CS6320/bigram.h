@@ -11,15 +11,17 @@ class Bigram {
  private:
   vector<string>              words;
   vector<vector<string>>      corpuses;
-  map<string,map<string,int>> countM;
+  map<string,int>             countUnigram;
+  map<string,map<string,int>> countBigram;
+  bool                        laplaceSmooth;
 
   vector<string>              regexParse(string, string);
  public:
-  Bigram(string);
+  Bigram(string, bool);
   ~Bigram();
   void          train(string);
   float         predict(string);
-  vector<float> predictBatch(vector<string>);
+  vector<float> predictFile(string);
 };
 
 #endif /* BIGRAM_H */

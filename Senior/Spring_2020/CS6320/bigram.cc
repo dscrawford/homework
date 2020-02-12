@@ -13,7 +13,8 @@ using namespace std;
  * Constructor acts as a shortcut to the train function.
  *
  */
-Bigram::Bigram(string trainName) {
+Bigram::Bigram(string trainName,bool laplaceSmooth) {
+  this->laplaceSmooth = laplaceSmooth;
   train(trainName);
 }
 
@@ -29,23 +30,22 @@ void Bigram::train(string trainName) {
   buffer    << trainFile.rdbuf();
   trainText = buffer.str();
   
-  vector<string> lines = regexParse(trainText, "\\b.+\\n");
-  for (unsigned long int i = 0; i < lines.size(); ++i)
-    corpuses.push_back(regexParse(lines[i], "\\b[a-zA-Z]+\\b"));
-  
+  vector<string> L = regexParse(trainText, "\\b.+\\.");
+  for (auto l: L) corpuses.push_back(regexParse(l, "\\b[a-zA-Z]+\\b"));
   words = regexParse(trainText, "\\b[a-zA-Z]+\\b");
   sort(words.begin(), words.end());
-  words.erase(unique(words.begin(), words.end()), words.end());
 
   cout << "Beginning training..." << endl;
-  for (unsigned long int i = 0; i < corpuses.size(); ++i) {
+  for (auto word: words) countUnigram[word]++;
+  words.erase(unique(words.begin(), words.end()), words.end());
+  if (laplaceSmooth) for (auto word: words) countUnigram[word] += words.size();
+			     
+  for (unsigned long int i = 0; i < corpuses.size(); ++i)
     //Skip first word in corpus, no previous words.
     for (unsigned long int j = 1; j < corpuses[i].size(); ++j) {
       string prevWord = corpuses[i][j-1];
-      countM[corpuses[i][j]][prevWord]++;
+      countBigram[corpuses[i][j]][prevWord]++;
     }
-  }
-
   cout << "Done!" << endl;
 }
 
@@ -67,31 +67,71 @@ vector<string> Bigram::regexParse(string text, string reg) {
 
 float Bigram::predict(string sentence) {
   vector<string> senWords = regexParse(sentence, "\\b[a-zA-Z]+\\b");
-  unsigned long int n = senWords.size();
-  unsigned long int sep = 5;
-  for (unsigned long int i = 0; i < n; ++i)
-    sep = (senWords[i].length() + 1 > sep) ? senWords[i].length() + 1 : sep;
-
-  cout << setw(sep) << " ";
-  for (unsigned long int i = 0; i < n; ++i) {
-    cout << setw(sep) << senWords[i];
-  }
-  cout << endl;
-  for (unsigned long int i = 0; i < n; ++i) {
-    cout << setw(sep) << senWords[i];
-    for (unsigned long int j = 0; j < n; ++j) {
-      cout << setw(sep) << countM[senWords[i]][senWords[j]];
+  const unsigned long int N = senWords.size();
+  unsigned long int countMatrix[N][N];
+  float             probMatrix[N][N];
+  for (unsigned long int i = 0; i < N; ++i)
+    for (unsigned long int j = 0; j < N; ++j) {
+      string wordi = senWords[i];
+      string wordj = senWords[j];
+      countMatrix[i][j] = ((laplaceSmooth) ? countBigram[wordi][wordj] + 1
+			   : countBigram[wordi][wordj]);
+      probMatrix[i][j]  = (float) countMatrix[i][j] / countUnigram[senWords[i]];
     }
-    cout << endl;
+  
+  unsigned long int sep = 10;
+  for (auto word: senWords)
+    sep = (word.length() + 1 > sep) ? word.length() + 1 : sep;
+
+  cout << "Sentence: " << sentence << endl;
+  cout << "Counts: " << endl;
+  cout << setw(sep) << " ";
+  for (auto word: senWords) cout << setw(sep) << word;
+  cout << endl;
+  for (unsigned long int i = 0; i < N; ++i) {
+    cout << endl << setw(sep) << senWords[i];
+    for (unsigned long int j = 0; j < N; ++j)
+      cout << setw(sep) << countMatrix[i][j];
   }
-  cout << "I'm done!" << endl;
-  return 0.0f;
+  cout << endl << endl;
+  
+  cout << "Probabilities: " << endl;
+  cout << setw(sep) << " ";
+  for (auto word: senWords) cout << setw(sep) << word;
+  cout << endl;
+  for (unsigned long int i = 0; i < N; ++i) {
+    cout << endl << setw(sep) << senWords[i];
+    for (unsigned long int j = 0; j < N; ++j)
+      cout << setw(sep) << fixed << (float) probMatrix[i][j];
+  }
+  cout << endl << endl;
+
+  double senProb = 1;
+  for (unsigned long int i = 1; i < N; ++i) senProb *= probMatrix[i][i-1];
+  cout << "Probability of sentence: " << senProb << endl;
+  return senProb;
 }
+
+vector<float> Bigram::predictFile(string testName) {
+  vector<float> predictions;
+  
+  ifstream     testFile(testName);
+  stringstream buffer;
+  string       testText;
+  
+  buffer    << testFile.rdbuf();
+  testText = buffer.str();
+
+  vector<string> testLines = regexParse(testText, "\\b.+\\.");
+  for (auto line: testLines) predictions.push_back(predict(line));
+  return predictions;
+}
+
 
 Bigram::~Bigram() {
   words.erase(words.begin(),words.end());
   words.shrink_to_fit();
   corpuses.erase(corpuses.begin(),corpuses.end());
   corpuses.shrink_to_fit();
-  countM.clear();
+  countBigram.clear();
 }
