@@ -8,5 +8,4 @@ fit1 = lm(req ~ size + tables)
 summary(fit1);
 
 fit2 = lm(req ~ size + tables + os)
-summary(fit2);
-
+summary(fit2)

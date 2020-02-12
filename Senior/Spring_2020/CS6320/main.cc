@@ -31,7 +31,7 @@ bool checkArgs(int argc, char** args) {
 int main(int argc, char** args) {
   if (!checkArgs(argc, args))
     return 1;
-  Bigram(std::string(args[1]));
+  Bigram bigram = Bigram(std::string(args[1]));
+  bigram.predict("i do not think this young lady is so celtic as i had supposed");
   return 0;
 }
-
