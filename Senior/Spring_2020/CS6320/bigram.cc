@@ -108,7 +108,7 @@ float Bigram::predict(string sentence) {
 
   double senProb = 1;
   for (unsigned long int i = 1; i < N; ++i) senProb *= probMatrix[i][i-1];
-  cout << "Probability of sentence: " << senProb << endl;
+  cout << "Probability of sentence: " << scientific << senProb << endl;
   return senProb;
 }
 
