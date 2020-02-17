@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-Wall
+CXXFLAGS=-Wall -O3
 OBJS=main.o bigram.o
 EXEC=bigram
 
