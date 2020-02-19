@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import regex as re
-
+from itertools import combinations
 
 class GraphicalModel:
     networkType = ""
@@ -23,32 +23,33 @@ class GraphicalModel:
     def getAssignment(self, index: int, stride: int, card: int):
         return index // stride % card
 
+    def getAssignments(self, index: int, stride: np.array, card: np.array):
+        return [index // stride[i] % card[i] for i in range(len(stride) - 1, 0, -1)]
+
     def factorProduct(self, f1, f2):
         j = 0
         k = 0
-        n = np.sum(self.card[list(set(self.cliqueScopes[f1]) & set(self.cliqueScopes[f2]))])
-        vn = len(self.cliqueScopes[f1]) + len(self.cliqueScopes[f2])
-        assignment = np.full(n, 0)
-        psi = np.full(n, 0)
-        for i in range(0, vn):
-            psi[i] = self.cliqueScopes[f1][j] * self.cliqueScopes[f2][k]
-            for l in range(0, n):
-                assignment[l] = assignment[l] + 1
-                if assignment[l] == self.card[l]:
-                    assignment[l] = 0
-                    j = j - (self.card[l] - 1) * (0 if len(self.stride) >= l else self.stride[l])
-                    k = k - (self.card[k] - 1) * (0 if len(self.stride) >= k else self.stride[k])
-                else:
-                    j = j + (0 if len(self.stride) >= l else self.stride[l])
-                    k = k + (0 if len(self.stride) >= k else self.stride[k])
+        vars = list(set().union(self.cliqueScopes[f1], self.cliqueScopes[f2]))
+        vn = np.product(self.card[vars])
+        n = np.max(self.card[vars])
+        psi = np.full(vn, 0.0)
+        # for i in range(0, vn):
+        #     psi[i] = self.functionTables[f1][j] * self.functionTables[f2][k]
+        #     for l in range(0, n):
+        #         assignment[l] = assignment[l] + 1
+        #         if assignment[l] == self.card[l]:
+        #             assignment[l] = 0
+        #             j = j - (self.card[l] - 1) * (0 if l >= len(self.stride[f1]) else self.stride[f1][l])
+        #             k = k - (self.card[l] - 1) * (0 if l >= len(self.stride[f2]) else self.stride[f2][l])
+        #         else:
+        #             j = j + (0 if l >= len(self.stride[f1]) else self.stride[f1][l])
+        #             k = k + (0 if l >= len(self.stride[f2]) else self.stride[f2][l])
+        #             break
+
         return psi
 
     def instantiateEvidence(self):
-        print("what")
-        # for i,(vars,table) in enumerate(self.functionTables):
-        # for var in vars:
-        # if (var == )
-        #    index = [j]
+        print('err')
 
     def parseUAIEvidence(self, evidenceFile: str):
         s = [t for t in open(evidenceFile, "r").read().split(' ') if t]
@@ -87,3 +88,4 @@ class GraphicalModel:
 
 
 network = GraphicalModel("network")
+print(network.factorProduct(0, 1))
