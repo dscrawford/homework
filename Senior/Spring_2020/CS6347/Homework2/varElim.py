@@ -24,32 +24,45 @@ class GraphicalModel:
         return index // stride % card
 
     def getAssignments(self, index: int, stride: np.array, card: np.array):
-        return [index // stride[i] % card[i] for i in range(len(stride) - 1, 0, -1)]
+        return [self.getAssignment(index, stride[i], card[i]) for i in range(len(stride))]
 
-    def factorProduct(self, f1, f2):
-        j = 0
-        k = 0
-        vars = list(set().union(self.cliqueScopes[f1], self.cliqueScopes[f2]))
-        vn = np.product(self.card[vars])
-        n = np.max(self.card[vars])
-        psi = np.full(vn, 0.0)
-        # for i in range(0, vn):
-        #     psi[i] = self.functionTables[f1][j] * self.functionTables[f2][k]
-        #     for l in range(0, n):
-        #         assignment[l] = assignment[l] + 1
-        #         if assignment[l] == self.card[l]:
-        #             assignment[l] = 0
-        #             j = j - (self.card[l] - 1) * (0 if l >= len(self.stride[f1]) else self.stride[f1][l])
-        #             k = k - (self.card[l] - 1) * (0 if l >= len(self.stride[f2]) else self.stride[f2][l])
-        #         else:
-        #             j = j + (0 if l >= len(self.stride[f1]) else self.stride[f1][l])
-        #             k = k + (0 if l >= len(self.stride[f2]) else self.stride[f2][l])
-        #             break
+    def getStride(self, cliqueScope):
+        prod = 1
+        a    = []
+        for i in reversed(cliqueScope):
+            a.append(prod)
+            prod = prod * self.card[i]
+        return list(reversed(a))
 
-        return psi
+    def factorProduct(self, x1, x2):
+        j    = 0
+        k    = 0
+        X1   = self.cliqueScopes[x1]
+        X2   = self.cliqueScopes[x2]
+        clique = np.array(list(set().union(X1, X2)))
+        stride = self.getStride(np.array(clique))
+        x1i  = np.ndarray.flatten(np.array([np.argwhere(clique == i) for i in X1]))
+        x2i  = np.ndarray.flatten(np.array([np.argwhere(clique == i) for i in X2]))
+        vn   = np.product(self.card[clique])
+        psi  = np.full(vn,0.0)
+        for i in range(np.product(self.card[clique])):
+            assign = np.array(self.getAssignments(i, stride, self.card[clique]))
+            psi[i] = self.functionTables[x1][self.getIndex(assign[x1i], self.stride[x1])] \
+                     * self.functionTables[x2][self.getIndex(assign[x2i], self.stride[x2])]
+        return (psi, clique, stride)
 
+    # Work in progress..
     def instantiateEvidence(self):
-        print('err')
+        for var, val in self.evidence:
+            for i, cs in enumerate(self.cliqueScopes):
+                vari = int(np.argwhere(cs == var))
+                newI = []
+                for j in range(len(self.functionTables[0])):
+                    assignment = self.getAssignment(j, self.stride[i], self.card[i])
+                    if (assignment[vari] == val):
+                        newI.append(j)
+                self.functionTables[i] = self.functionTables[i][newI]
+                self.cliqueScopes[i] = np.delete(self.cliqueScopes[i], np.where(self.cliqueScopes[i] == var), axis=0)
 
     def parseUAIEvidence(self, evidenceFile: str):
         s = [t for t in open(evidenceFile, "r").read().split(' ') if t]
@@ -83,8 +96,7 @@ class GraphicalModel:
                     entriesAdded += len(newEntries)
                     entries += newEntries
                 self.functionTables += [np.array(entries)]
-            self.stride = np.array([[np.product(self.card[cs[range(0, i)]]) for i, _ in enumerate(cs)]
-                                    for cs in self.cliqueScopes])
+            self.stride = np.array([self.getStride(cs) for cs in self.cliqueScopes])
 
 
 network = GraphicalModel("network")
