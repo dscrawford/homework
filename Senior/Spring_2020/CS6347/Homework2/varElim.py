@@ -1,5 +1,6 @@
 import numpy as np
 import regex as re
+from os import path
 
 
 class GraphicalModel:
@@ -15,8 +16,9 @@ class GraphicalModel:
 
     def __init__(self, uaiFile: str):
         self.parseUAI(uaiFile + ".uai")
-        self.parseUAIEvidence(uaiFile + ".uai.evid")
-        self.instantiateEvidence()
+        if (path.exists(uaiFile + ".uai.evid")):
+            self.parseUAIEvidence(uaiFile + ".uai.evid")
+            self.instantiateEvidence()
         self.order = self.getOrder()
 
     def getIndex(self, assignment: np.array, stride: np.array):
@@ -43,7 +45,7 @@ class GraphicalModel:
                 if v in cs:
                     varD[v] = varD[v] | cs
 
-        vars  = np.array([v for v in varD.keys()])
+        vars = np.array([v for v in varD.keys()])
         order = np.argsort([len(varD[vD]) for vD in varD.keys()])
         return vars[order]
 
@@ -87,9 +89,18 @@ class GraphicalModel:
                     newPhi = self.factorProduct(newPhi[0], newPhi[1], newPhi[2], p[0], p[1], p[2])
             else:
                 newPhi = phi[0]
-            newPhi = np.array([]), [np.sum(newPhi[1])], []
-            functions.append(newPhi)
-        return np.product([f[1] for f in functions])
+            functions.append(self.sumVariable(newPhi[0], newPhi[1], newPhi[2], o))
+        return np.sum(np.log10([f[1][0] for f in functions]))
+
+    def sumVariable(self, X, F, S, v):
+        vi = int(np.argwhere(X == v))
+        n = np.product(self.card[X])
+        newCs = [x for x in X if x != v]
+        newPhi = newCs, np.full(n // self.card[v], 0.0), self.getStride(self.card[newCs])
+        for i in range(np.product(self.card[X])):
+            assignment = self.getAssignments(i, S, self.card[X])
+            newPhi[1][self.getIndex(np.delete(assignment, vi), newPhi[2])] += F[i]
+        return newPhi
 
     def instantiateEvidence(self):
         cliqueScopes = [np.array(cs) for cs in self.cliqueScopes]
@@ -145,5 +156,5 @@ class GraphicalModel:
             self.stride = [self.getStride(cs) for cs in self.cliqueScopes]
 
 
-network = GraphicalModel("network")
+network = GraphicalModel("3")
 print(network.sumOut())
