@@ -156,5 +156,5 @@ class GraphicalModel:
             self.stride = [self.getStride(cs) for cs in self.cliqueScopes]
 
 
-network = GraphicalModel("3")
+network = GraphicalModel("1")
 print(network.sumOut())
