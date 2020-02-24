@@ -1,7 +1,12 @@
 import numpy as np
 import regex as re
 from os import path
+from sys import argv
 
+if len(argv) != 2:
+    print('Error: Insufficient amount of arguments')
+    exit(1)
+fileName = argv[1]
 
 class GraphicalModel:
     networkType = ""
@@ -44,6 +49,7 @@ class GraphicalModel:
             for cs in cliqueSets:
                 if v in cs:
                     varD[v] = varD[v] | cs
+        
 
         vars = np.array([v for v in varD.keys()])
         order = np.argsort([len(varD[vD]) for vD in varD.keys()])
@@ -156,5 +162,5 @@ class GraphicalModel:
             self.stride = [self.getStride(cs) for cs in self.cliqueScopes]
 
 
-network = GraphicalModel("1")
+network = GraphicalModel(fileName)
 print(network.sumOut())
