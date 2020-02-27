@@ -1,0 +1,96 @@
+Naive Bayes with CountVectorizer without stop words 
+Accuracy:  0.81356
+Precision: 0.7484
+Recall:    0.8605464078741606
+F-Score:   0.8005648025330537
+
+Naive Bayes with CountVectorizer with stop words 
+Accuracy:  0.81968
+Precision: 0.75976
+Recall:    0.8632066896927831
+F-Score:   0.8081865373159731
+
+Naive Bayes with TfidfVectorizer without stop words 
+Accuracy:  0.82956
+Precision: 0.77
+Recall:    0.8741258741258742
+F-Score:   0.8187656841478457
+
+Naive Bayes with TfidfVectorizer with stop words 
+Accuracy:  0.82992
+Precision: 0.78152
+Recall:    0.8652790079716564
+F-Score:   0.8212694409415722
+
+Logistic Regression with CountVectorizer without stop words 
+Accuracy:  0.85152
+Precision: 0.84152
+Recall:    0.8586938775510204
+F-Score:   0.8500202020202021
+
+Logistic Regression with CountVectorizer without stop words with l1 regularization
+Accuracy:  0.86448
+Precision: 0.8592
+Recall:    0.8683699870633894
+F-Score:   0.8637606562650796
+
+Logistic Regression with CountVectorizer without stop words with l2 regularization
+Accuracy:  0.86672
+Precision: 0.8588
+Recall:    0.872622337831247
+F-Score:   0.8656559954842351
+
+Logistic Regression with CountVectorizer with stop words 
+Accuracy:  0.83672
+Precision: 0.8244
+Recall:    0.8452263779527559
+F-Score:   0.8346832982342459
+
+Logistic Regression with CountVectorizer with stop words with l1 regularization
+Accuracy:  0.85908
+Precision: 0.85032
+Recall:    0.8654832668349483
+F-Score:   0.8578346313708083
+
+Logistic Regression with CountVectorizer with stop words with l2 regularization
+Accuracy:  0.85908
+Precision: 0.85016
+Recall:    0.8656023458499633
+F-Score:   0.8578116801872704
+
+Logistic Regression with TfidfVectorizer without stop words 
+Accuracy:  0.84564
+Precision: 0.82944
+Recall:    0.8572137246796196
+F-Score:   0.8430981906891645
+
+Logistic Regression with TfidfVectorizer without stop words with l1 regularization
+Accuracy:  0.8794
+Precision: 0.89272
+Recall:    0.8695550533780099
+F-Score:   0.8809852761220542
+
+Logistic Regression with TfidfVectorizer without stop words with l2 regularization
+Accuracy:  0.88312
+Precision: 0.88184
+Recall:    0.8841033044594161
+F-Score:   0.8829702018583788
+
+Logistic Regression with TfidfVectorizer with stop words 
+Accuracy:  0.82704
+Precision: 0.80616
+Recall:    0.8412923693437969
+F-Score:   0.8233515810115206
+
+Logistic Regression with TfidfVectorizer with stop words with l1 regularization
+Accuracy:  0.87332
+Precision: 0.88696
+Recall:    0.863406276769722
+F-Score:   0.8750246635886509
+
+Logistic Regression with TfidfVectorizer with stop words with l2 regularization
+Accuracy:  0.879
+Precision: 0.88048
+Recall:    0.877881470846295
+F-Score:   0.8791788153532771
+
