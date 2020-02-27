@@ -49,11 +49,24 @@ class GraphicalModel:
             for cs in cliqueSets:
                 if v in cs:
                     varD[v] = varD[v] | cs
-        
-
-        vars = np.array([v for v in varD.keys()])
-        order = np.argsort([len(varD[vD]) for vD in varD.keys()])
-        return vars[order]
+        order = []
+        # Iterate through all edges now, select min degree variable and all add those edges to each other variable that
+        # the edge was connected to.
+        for i in range(len(vars)):
+            minVar = list(varD.keys())[0]
+            minDegree = len(varD[minVar])
+            for var in vars:
+                if len(varD[var]) < minDegree:
+                    minVar = var
+                    minDegree = len(varD[minVar])
+            order.append(minVar)
+            for var in vars:
+                if minVar in varD[var]:
+                    varD[var] = varD[var] | varD[minVar]
+                    varD[var] = varD[var] - {minVar}
+            del(varD[minVar])
+            vars.remove(minVar)
+        return order
 
     def getStride(self, cliqueScope):
         prod = 1
