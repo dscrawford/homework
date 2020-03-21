@@ -93,6 +93,7 @@ class GraphicalModel:
     def sumOut(self):
         functions = [(self.cliqueScopes[i], self.functionTables[i], self.stride[i]) for i in
                      range(len(self.cliqueScopes))]
+        print([f[0] for f in functions])
         for o in self.order:
             phi = [(cs, f, s) for cs, f, s in functions if o in cs]
             functions = [(cs, f, s) for cs, f, s in functions if o not in cs]
@@ -109,6 +110,7 @@ class GraphicalModel:
             else:
                 newPhi = phi[0]
             functions.append(self.sumVariable(newPhi[0], newPhi[1], newPhi[2], o))
+            print([f[0] for f in functions])
         return np.sum(np.log10([f[1][0] for f in functions]))
 
     def sumVariable(self, X, F, S, v):

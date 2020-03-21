@@ -6,10 +6,10 @@ import argparse
 
 def reportPerformance(y_pred, test_labels, description):
     print(description)
-    print('Accuracy:  ', accuracy_score(y_pred, test_labels), '\n',
-          'Precision: ', precision_score(y_pred, test_labels), '\n',
-          'Recall:    ', recall_score(y_pred, test_labels), '\n',
-          'F-Score:   ', f1_score(y_pred, test_labels), '\n', sep='')
+    print('Accuracy:  ', accuracy_score(test_labels, y_pred), '\n',
+          'Precision: ', precision_score(test_labels, y_pred), '\n',
+          'Recall:    ', recall_score(test_labels, y_pred), '\n',
+          'F-Score:   ', f1_score(test_labels, y_pred), '\n', sep='')
 
 
 parser = argparse.ArgumentParser(description='Arguments for training a basic word model')

@@ -1,0 +1,72 @@
+Naive Bayes with CountVectorizer without stop words 
+Accuracy:  0.81356
+Precision: 0.8605464078741606
+Recall:    0.7484
+F-Score:   0.8005648025330537
+
+Naive Bayes with CountVectorizer with stop words 
+Accuracy:  0.81968
+Precision: 0.8632066896927831
+Recall:    0.75976
+F-Score:   0.8081865373159731
+
+Naive Bayes with TfidfVectorizer without stop words 
+Accuracy:  0.82956
+Precision: 0.8741258741258742
+Recall:    0.77
+F-Score:   0.8187656841478457
+
+Logistic Regression with CountVectorizer without stop words 
+Accuracy:  0.85152
+Precision: 0.8586938775510204
+Recall:    0.84152
+F-Score:   0.8500202020202021
+
+Logistic Regression with CountVectorizer without stop words with l1 regularization
+Accuracy:  0.86452
+Precision: 0.8683806289918344
+Recall:    0.85928
+F-Score:   0.8638063452491054
+
+Logistic Regression with CountVectorizer without stop words with l2 regularization
+Accuracy:  0.86672
+Precision: 0.872622337831247
+Recall:    0.8588
+F-Score:   0.8656559954842351
+
+Logistic Regression with CountVectorizer with stop words 
+Accuracy:  0.83672
+Precision: 0.8452263779527559
+Recall:    0.8244
+F-Score:   0.8346832982342459
+
+Logistic Regression with CountVectorizer with stop words with l1 regularization
+Accuracy:  0.85908
+Precision: 0.8653642653642654
+Recall:    0.85048
+F-Score:   0.8578575751462577
+
+Logistic Regression with CountVectorizer with stop words with l2 regularization
+Accuracy:  0.85908
+Precision: 0.8656023458499633
+Recall:    0.85016
+F-Score:   0.8578116801872704
+
+Logistic Regression with TfidfVectorizer without stop words 
+Accuracy:  0.84564
+Precision: 0.8572137246796196
+Recall:    0.82944
+F-Score:   0.8430981906891645
+
+Logistic Regression with TfidfVectorizer without stop words with l1 regularization
+Accuracy:  0.87944
+Precision: 0.8696228179551122
+Recall:    0.89272
+F-Score:   0.8810200536870362
+
+Logistic Regression with TfidfVectorizer without stop words with l2 regularization
+Accuracy:  0.88312
+Precision: 0.8841033044594161
+Recall:    0.88184
+F-Score:   0.8829702018583788
+
