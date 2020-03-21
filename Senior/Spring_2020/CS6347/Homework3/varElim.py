@@ -3,7 +3,9 @@ from collections import Counter
 import numpy as np
 import regex as re
 from os import path
+import random
 from sys import argv
+
 
 # if len(argv) != 2:
 #     print('Error: Insufficient amount of arguments')
@@ -39,7 +41,8 @@ class Factor(object):
     def getAssignments(self, index: int):
         if (len(self.stride) == 0):
             return 0
-        return [self.getAssignment(index, self.stride[i], self.card[self.cliqueScope[i]]) for i in range(len(self.stride))]
+        return [self.getAssignment(index, self.stride[i], self.card[self.cliqueScope[i]]) for i in
+                range(len(self.stride))]
 
     def getStride(self, cliqueScope):
         prod = 1
@@ -58,7 +61,8 @@ class Factor(object):
         F3 = Factor(clique, np.full(vn, 0.0), self.card)
         for i in range(vn):
             assign = np.array(F3.getAssignments(i))
-            F3.functionTable[i] = F1.functionTable[F1.getIndex(assign[x1i])] * F2.functionTable[F2.getIndex(assign[x2i])]
+            F3.functionTable[i] = F1.functionTable[F1.getIndex(assign[x1i])] * F2.functionTable[
+                F2.getIndex(assign[x2i])]
         return F3
 
     def sumVariable(self, v):
@@ -75,19 +79,21 @@ class Factor(object):
         return newPhi
 
     def instantiateEvidence(self, evidence):
+        newFactor = Factor(self.cliqueScope, self.functionTable, self.card)
         for var, val in evidence:
-            varI = np.argwhere(self.cliqueScope == var)
+            varI = np.argwhere(newFactor.cliqueScope == var)
             if len(varI) != 1:
                 continue
             varI = int(varI)
             newI = []
-            for j in range(len(self.functionTable)):
-                assignment = self.getAssignments(j)
+            for j in range(len(newFactor.functionTable)):
+                assignment = newFactor.getAssignments(j)
                 if assignment[varI] == val:
                     newI.append(j)
-            self.functionTable = self.functionTable[newI]
-            self.cliqueScope = np.delete(self.cliqueScope, varI)
-            self.stride = self.getStride(self.cliqueScope)
+            cliqueScope = np.delete(newFactor.cliqueScope, varI)
+            functionTable = newFactor.functionTable[newI]
+            newFactor = Factor(cliqueScope, functionTable, self.card)
+        return newFactor
 
     def __mul__(self, other):
         return self.factorProduct(self, other)
@@ -98,16 +104,17 @@ class GraphicalModel:
     varN = 0
     cliques = 0
     evidence = np.array([])
-    order = []
+    minDegreeOrder = []
     factors = []
+    card = []
 
     def __init__(self, uaiFile: str):
         self.parseUAI(uaiFile + ".uai")
         if (path.exists(uaiFile + ".uai.evid")):
             self.parseUAIEvidence(uaiFile + ".uai.evid")
-            self.instantiateEvidence()
-        self.order = self.getOrder()
-        print(self.wCutset(1))
+            self.factors = self.instantiateEvidence(self.evidence)
+        self.minDegreeOrder = self.getOrder()
+        # print(self.wCutset(1))
 
     def getOrder(self):
         cliqueSets = [set(f.cliqueScope) for f in self.factors]
@@ -138,9 +145,11 @@ class GraphicalModel:
             vars.remove(minVar)
         return order
 
-    def sumOut(self):
-        functions = [f for f in self.factors]
-        for o in self.order:
+    def sumOut(self, factors=None):
+        if factors == None:
+            factors = self.factors
+        functions = [f for f in factors]
+        for o in self.minDegreeOrder:
             phi = [f for f in functions if o in f.cliqueScope]
             functions = [f for f in functions if o not in f.cliqueScope]
             newPhi = None
@@ -156,19 +165,32 @@ class GraphicalModel:
             functions.append(newPhi.sumVariable(o))
         return np.sum(np.log10([f.functionTable[0] for f in functions]))
 
-    def instantiateEvidence(self):
-        for f in self.factors:
-            f.instantiateEvidence(self.evidence)
+    def instantiateEvidence(self, evidence):
+        return [self.factors[i].instantiateEvidence(evidence) for i in range(self.cliques)]
 
-    def sampleSumOut(self,w,N):
+    def sampleSumOut(self, w, N):
         Z = 0
         X = self.wCutset(w)
+        for i in range(N):
+            sampleEvidence = self.generateSampleUniform(X)
+            varElim = self.sumOut(self.instantiateEvidence(sampleEvidence))
+            w = varElim / 1
+            Z = Z + w
+        return Z / N
+
+    def generateSampleUniform(self, X: set):
+        return [(var, int(random.uniform(0, self.card[var]))) for var in X]
 
     def wCutset(self, w):
         cliqueScopes = [f.cliqueScope for f in self.factors]
         tree = []
-        for o in self.order:
-            tree.append(list(np.unique([cs for cs in cliqueScopes if o in cs])))
+        for o in self.minDegreeOrder:
+            treeNode = [cs for cs in cliqueScopes if o in cs]
+            nodes = set()
+            for cs in treeNode:
+                for var in cs:
+                    nodes = nodes.union({var})
+            tree.append(list(nodes))
             cliqueScopes = [cs for cs in cliqueScopes if o not in cs]
         X = set()
         while np.max([len(a) for a in tree]) > w + 1:
@@ -219,7 +241,8 @@ class GraphicalModel:
                     functionTables += [np.array(entries)]
                     data = None if i == self.cliques - 1 else s.pop(0)
         self.factors = [Factor(cliqueScopes[i], functionTables[i], card) for i in range(self.cliques)]
+        self.card = card
 
 
-network = GraphicalModel("test")
-#print(network.sumOut())
+network = GraphicalModel("Grids_14")
+print(network.sampleSumOut(3,100))
