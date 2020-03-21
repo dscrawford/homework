@@ -107,9 +107,12 @@ class GraphicalModel:
     minDegreeOrder = []
     factors = []
     card = []
+    Z = 1
 
     def __init__(self, uaiFile: str):
         self.parseUAI(uaiFile + ".uai")
+        # self.minDegreeOrder = self.getOrder()
+        # Z = 10**self.sumOut()
         if (path.exists(uaiFile + ".uai.evid")):
             self.parseUAIEvidence(uaiFile + ".uai.evid")
             self.factors = self.instantiateEvidence(self.evidence)
@@ -172,9 +175,10 @@ class GraphicalModel:
         Z = 0
         X = self.wCutset(w)
         for i in range(N):
+            print(i)
             sampleEvidence = self.generateSampleUniform(X)
             varElim = self.sumOut(self.instantiateEvidence(sampleEvidence))
-            w = varElim / 1
+            w = varElim - np.log10(np.product([1 / self.card[var] for var in X]))
             Z = Z + w
         return Z / N
 
@@ -244,5 +248,5 @@ class GraphicalModel:
         self.card = card
 
 
-network = GraphicalModel("Grids_14")
-print(network.sampleSumOut(3,100))
+network = GraphicalModel("1")
+print(network.sumOut())
