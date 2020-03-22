@@ -4,7 +4,7 @@ import numpy as np
 import regex as re
 from os import path
 import random
-from sys import argv
+import sys
 
 
 # if len(argv) != 2:
@@ -13,7 +13,20 @@ from sys import argv
 # fileName = argv[1]
 
 
-np.seterr(all='raise')
+np.seterr(all='ignore')
+
+log = np.log10
+base = 10
+def logsumexp(a):
+    mx = max(a)
+    return log(np.sum([threshold(base ** (log(i) - log(mx))) for i in a])) + log(mx)
+
+def threshold(x):
+    if x < 1e-10:
+        return 0.0
+    elif x == float('inf'):
+        return sys.float_info.max
+    return x
 
 class Factor(object):
     card = []
@@ -51,7 +64,6 @@ class Factor(object):
 
     def factorProduct(self, F1, F2):
         clique = np.array(list(set().union(F1.cliqueScope, F2.cliqueScope)))
-        stride = self.getStride(np.array(clique))
         x1i = np.ndarray.flatten(np.array([np.argwhere(clique == i) for i in F1.cliqueScope])).astype(np.int64)
         x2i = np.ndarray.flatten(np.array([np.argwhere(clique == i) for i in F2.cliqueScope])).astype(np.int64)
         vn = np.product(self.card[clique])
@@ -60,7 +72,7 @@ class Factor(object):
             assign = np.array(F3.getAssignments(i))
             x1 = F1.functionTable[F1.getIndex(assign[x1i])]
             x2 = F2.functionTable[F2.getIndex(assign[x2i])]
-            F3.functionTable[i] = 2**np.sum(np.log2([x1, x2]))
+            F3.functionTable[i] = threshold(x1 * x2)
         return F3
 
     def sumVariable(self, v):
@@ -74,12 +86,8 @@ class Factor(object):
         for i in range(n):
             assignment = self.getAssignments(i)
             newPhi.functionTable[newPhi.getIndex(np.delete(assignment, vi))] += [F[i]]
-        newPhi.functionTable = [2**self.logsumexp(i) for i in newPhi.functionTable]
+        newPhi.functionTable = [threshold(base**logsumexp(i)) for i in newPhi.functionTable]
         return newPhi
-
-    def logsumexp(self,a):
-        mx = max(a)
-        return np.log2(np.sum([0 if i < 1e-5 else 2**(np.log2(i) - np.log2(mx)) for i in a])) + np.log2(mx)
 
     def instantiateEvidence(self, evidence):
         newFactor = Factor(self.cliqueScope, self.functionTable, self.card)
@@ -120,7 +128,6 @@ class GraphicalModel:
             self.parseUAIEvidence(uaiFile + ".uai.evid")
             self.factors = self.instantiateEvidence(self.evidence)
         self.minDegreeOrder = self.getOrder()
-        # print(self.wCutset(1))
 
     def getOrder(self):
         cliqueSets = [set(f.cliqueScope) for f in self.factors]
@@ -158,18 +165,13 @@ class GraphicalModel:
         for o in self.minDegreeOrder:
             phi = [f for f in functions if o in f.cliqueScope]
             functions = [f for f in functions if o not in f.cliqueScope]
-            newPhi = None
             if len(phi) == 0:
                 continue
-            elif len(phi) > 1:
-                newPhi = phi[0]
-                phi.pop(0)
-                for p in phi:
-                    newPhi = newPhi * p
-            else:
-                newPhi = phi[0]
+            newPhi = phi.pop()
+            for p in phi:
+                newPhi = newPhi * p
             functions.append(newPhi.sumVariable(o))
-        return np.sum(np.log10([f.functionTable[0] for f in functions]))
+        return np.sum(log([f.functionTable[0] for f in functions]))
 
     def instantiateEvidence(self, evidence):
         return [self.factors[i].instantiateEvidence(evidence) for i in range(self.cliques)]
@@ -178,7 +180,6 @@ class GraphicalModel:
         Z = 0
         X = self.wCutset(w)
         for i in range(N):
-            print(i)
             sampleEvidence = self.generateSampleUniform(X)
             varElim = self.sumOut(self.instantiateEvidence(sampleEvidence))
             w = varElim - np.sum(np.log10([1 / self.card[var] for var in X]))
@@ -216,7 +217,6 @@ class GraphicalModel:
             v = max(l, key=data.get)
             tree = [[c for c in cs if c != v] for cs in tree]
             X = X.union({v})
-        print(X)
         return X
 
     def parseUAIEvidence(self, evidenceFile: str):
@@ -262,4 +262,4 @@ class GraphicalModel:
 
 
 network = GraphicalModel("Grids_14")
-print(network.sampleSumOut(5,100))
+print(network.sampleSumOut(w=3,N=100))
