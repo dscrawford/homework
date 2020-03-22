@@ -13,22 +13,19 @@ from sys import argv
 # fileName = argv[1]
 
 
+np.seterr(all='raise')
+
 class Factor(object):
     card = []
     cliqueScope = []
     functionTable = []
     stride = []
 
-    def __init__(self, cliqueScope, card):
+    def __init__(self, cliqueScope=None, functionTable=None, card=None):
         self.cliqueScope = np.array(cliqueScope)
         self.card = np.array(card)
         self.stride = self.getStride(cliqueScope)
-
-    def __init__(self, cliqueScope, functionTable, card):
-        self.cliqueScope = np.array(cliqueScope)
         self.functionTable = functionTable
-        self.card = np.array(card)
-        self.stride = self.getStride(cliqueScope)
 
     def getIndex(self, assignment: np.array):
         if len(assignment) == 0:
@@ -61,8 +58,9 @@ class Factor(object):
         F3 = Factor(clique, np.full(vn, 0.0), self.card)
         for i in range(vn):
             assign = np.array(F3.getAssignments(i))
-            F3.functionTable[i] = F1.functionTable[F1.getIndex(assign[x1i])] * \
-                                  F2.functionTable[F2.getIndex(assign[x2i])]
+            x1 = F1.functionTable[F1.getIndex(assign[x1i])]
+            x2 = F2.functionTable[F2.getIndex(assign[x2i])]
+            F3.functionTable[i] = 2**np.sum(np.log2([x1, x2]))
         return F3
 
     def sumVariable(self, v):
@@ -72,11 +70,16 @@ class Factor(object):
         vi = int(np.argwhere(X == v))
         n = np.product(self.card[X])
         newCs = [x for x in X if x != v]
-        newPhi = Factor(newCs, np.full(n // self.card[v], 0.0), self.card)
-        for i in range(np.product(self.card[X])):
+        newPhi = Factor(newCs, [[] for _ in range(n // self.card[v])], self.card)
+        for i in range(n):
             assignment = self.getAssignments(i)
-            newPhi.functionTable[newPhi.getIndex(np.delete(assignment, vi))] += F[i]
+            newPhi.functionTable[newPhi.getIndex(np.delete(assignment, vi))] += [F[i]]
+        newPhi.functionTable = [2**self.logsumexp(i) for i in newPhi.functionTable]
         return newPhi
+
+    def logsumexp(self,a):
+        mx = max(a)
+        return np.log2(np.sum([0 if i < 1e-5 else 2**(np.log2(i) - np.log2(mx)) for i in a])) + np.log2(mx)
 
     def instantiateEvidence(self, evidence):
         newFactor = Factor(self.cliqueScope, self.functionTable, self.card)
@@ -178,7 +181,7 @@ class GraphicalModel:
             print(i)
             sampleEvidence = self.generateSampleUniform(X)
             varElim = self.sumOut(self.instantiateEvidence(sampleEvidence))
-            w = varElim - np.log10(np.product([1 / self.card[var] for var in X]))
+            w = varElim - np.sum(np.log10([1 / self.card[var] for var in X]))
             Z = Z + w
         return Z / N
 
@@ -210,10 +213,10 @@ class GraphicalModel:
         while np.max([len(a) for a in tree]) > w + 1:
             l = list(itertools.chain(*tree))
             data = Counter(l)
-            max(l, key=data.get)
             v = max(l, key=data.get)
             tree = [[c for c in cs if c != v] for cs in tree]
             X = X.union({v})
+        print(X)
         return X
 
     def parseUAIEvidence(self, evidenceFile: str):
@@ -259,4 +262,4 @@ class GraphicalModel:
 
 
 network = GraphicalModel("Grids_14")
-print(network.sampleSumOut(4,100))
+print(network.sampleSumOut(5,100))
