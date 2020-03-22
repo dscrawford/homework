@@ -61,8 +61,8 @@ class Factor(object):
         F3 = Factor(clique, np.full(vn, 0.0), self.card)
         for i in range(vn):
             assign = np.array(F3.getAssignments(i))
-            F3.functionTable[i] = F1.functionTable[F1.getIndex(assign[x1i])] * F2.functionTable[
-                F2.getIndex(assign[x2i])]
+            F3.functionTable[i] = F1.functionTable[F1.getIndex(assign[x1i])] * \
+                                  F2.functionTable[F2.getIndex(assign[x2i])]
         return F3
 
     def sumVariable(self, v):
@@ -185,6 +185,15 @@ class GraphicalModel:
     def generateSampleUniform(self, X: set):
         return [(var, int(random.uniform(0, self.card[var]))) for var in X]
 
+    # wCutset(C, m, w): where C is the cliques and m is the min-degree ordering
+    # let t be an empty tree
+    # t <- schematic bucket elimination induced tree
+    # X = empty set
+    # while largest set in tree is larger than w+1
+    #  v <- variable that appears most often in tree
+    #  t <- t without v at each cluster
+    #  X = X U v
+    # return X
     def wCutset(self, w):
         cliqueScopes = [f.cliqueScope for f in self.factors]
         tree = []
@@ -196,6 +205,7 @@ class GraphicalModel:
                     nodes = nodes.union({var})
             tree.append(list(nodes))
             cliqueScopes = [cs for cs in cliqueScopes if o not in cs]
+            cliqueScopes.append(list(nodes - {o}))
         X = set()
         while np.max([len(a) for a in tree]) > w + 1:
             l = list(itertools.chain(*tree))
@@ -242,11 +252,11 @@ class GraphicalModel:
                         newEntries = [float(d) for d in s.pop(0).split(' ') if d]
                         entriesAdded += len(newEntries)
                         entries += newEntries
-                    functionTables += [np.array(entries)]
+                    functionTables += [np.array(entries).astype(np.float64)]
                     data = None if i == self.cliques - 1 else s.pop(0)
         self.factors = [Factor(cliqueScopes[i], functionTables[i], card) for i in range(self.cliques)]
         self.card = card
 
 
-network = GraphicalModel("1")
-print(network.sumOut())
+network = GraphicalModel("Grids_14")
+print(network.sampleSumOut(4,100))
