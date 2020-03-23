@@ -5,21 +5,33 @@ import regex as re
 from os import path
 import random
 import sys
+import argparse
 
-
-# if len(argv) != 2:
-#     print('Error: Insufficient amount of arguments')
-#     exit(1)
-# fileName = argv[1]
-
-
+# parser = argparse.ArgumentParser(description='Variable Elimination with sampling')
+# parser.add_argument('filename', metavar='filename', type=str, help='A filename with its path(no extensions)')
+# parser.add_argument('w', metavar='w', type=int, help='W-cutset value')
+# parser.add_argument('N', metavar='N', type=int, help='Number of samples to take')
+# parser.add_argument('--random_seed', metavar='random', type=int, help='Random seed, like it says')
+# parser.add_argument('--adaptive', metavar='adaptive', type=bool,
+#                     help='Whether to use adaptive distribution or not')
+#
+# args = parser.parse_args()
+# fileName = args.filename
+# w = args.w
+# N = args.N
+# random_seed = args.random_seed
+# adaptive = args.adaptive
+#
+# random.seed(random_seed)
 np.seterr(all='ignore')
-
 log = np.log10
 base = 10
+
+
 def logsumexp(a):
     mx = max(a)
     return log(np.sum([threshold(base ** (log(i) - log(mx))) for i in a])) + log(mx)
+
 
 def threshold(x):
     if x < 1e-10:
@@ -27,6 +39,7 @@ def threshold(x):
     elif x == float('inf'):
         return sys.float_info.max
     return x
+
 
 class Factor(object):
     card = []
@@ -86,7 +99,7 @@ class Factor(object):
         for i in range(n):
             assignment = self.getAssignments(i)
             newPhi.functionTable[newPhi.getIndex(np.delete(assignment, vi))] += [F[i]]
-        newPhi.functionTable = [threshold(base**logsumexp(i)) for i in newPhi.functionTable]
+        newPhi.functionTable = [threshold(base ** logsumexp(i)) for i in newPhi.functionTable]
         return newPhi
 
     def instantiateEvidence(self, evidence):
@@ -165,29 +178,43 @@ class GraphicalModel:
         for o in self.minDegreeOrder:
             phi = [f for f in functions if o in f.cliqueScope]
             functions = [f for f in functions if o not in f.cliqueScope]
-            if len(phi) == 0:
-                continue
-            newPhi = phi.pop()
-            for p in phi:
-                newPhi = newPhi * p
-            functions.append(newPhi.sumVariable(o))
+            if len(phi) != 0:
+                newPhi = phi.pop()
+                for p in phi:
+                    newPhi = newPhi * p
+                functions.append(newPhi.sumVariable(o))
         return np.sum(log([f.functionTable[0] for f in functions]))
 
     def instantiateEvidence(self, evidence):
         return [self.factors[i].instantiateEvidence(evidence) for i in range(self.cliques)]
 
-    def sampleSumOut(self, w, N):
+    def sampleSumOut(self, w, N, adaptive=False):
         Z = 0
         X = self.wCutset(w)
+        S = []
+        Q = []
+        VE = []
         for i in range(N):
             sampleEvidence = self.generateSampleUniform(X)
-            varElim = self.sumOut(self.instantiateEvidence(sampleEvidence))
-            w = varElim - np.sum(np.log10([1 / self.card[var] for var in X]))
-            Z = Z + w
-        return Z / N
+            S.append(sampleEvidence)
+            z = self.sumOut(self.instantiateEvidence(sampleEvidence))
+            VE.append(z)
+            Q.append(sum([log(1/self.card[var]) for var in X]))
+            if 0 == (i+1) % 100 and i-1 > 1 and adaptive:
+                Q = self.adaptiveQ(Q, VE, S)
+        return sum([VE[i] - Q[i] for i in range(N)]) / N
 
     def generateSampleUniform(self, X: set):
         return [(var, int(random.uniform(0, self.card[var]))) for var in X]
+
+    def adaptiveQ(self, Q, VE, S):
+        n = len(Q)
+        Qn = [0 for _ in range(n)]
+        W = [VE[i] - Q[i] for i in range(n)]
+        Wtot = base**logsumexp(W)
+        for i, s1 in enumerate(S):
+            Qn[i] = sum([(1 if s1 == S[j] else 0) * W[j] / Wtot for j in range(n)])
+        return Qn
 
     # wCutset(C, m, w): where C is the cliques and m is the min-degree ordering
     # let t be an empty tree
@@ -260,6 +287,8 @@ class GraphicalModel:
         self.factors = [Factor(cliqueScopes[i], functionTables[i], card) for i in range(self.cliques)]
         self.card = card
 
+#
+# network = GraphicalModel(fileName)
+# print(network.sampleSumOut(w=w, N=N, adaptive=adaptive))
 
-network = GraphicalModel("Grids_14")
-print(network.sampleSumOut(w=3,N=100))
+
