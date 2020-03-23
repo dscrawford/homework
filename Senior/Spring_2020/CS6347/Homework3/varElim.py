@@ -58,7 +58,8 @@ class Factor(object):
             return 0
         return sum(assignment * self.stride)
 
-    def getAssignment(self, index: int, stride: int, card: int):
+    @staticmethod
+    def getAssignment(index: int, stride: int, card: int):
         return index // stride % card
 
     def getAssignments(self, index: int):
@@ -135,83 +136,85 @@ class GraphicalModel:
 
     def __init__(self, uaiFile: str):
         self.parseUAI(uaiFile + ".uai")
-        # self.minDegreeOrder = self.getOrder()
-        # Z = 10**self.sumOut()
-        if (path.exists(uaiFile + ".uai.evid")):
+        if path.exists(uaiFile + ".uai.evid"):
             self.parseUAIEvidence(uaiFile + ".uai.evid")
             self.factors = self.instantiateEvidence(self.evidence)
         self.minDegreeOrder = self.getOrder()
 
-    def getOrder(self):
-        cliqueSets = [set(f.cliqueScope) for f in self.factors]
-        vars = set()
+    def getOrder(self, factors=None):
+        if factors is None:
+            factors = self.factors
+        cliqueSets = [set(f.cliqueScope) for f in factors]
+        clique = set()
         for cs in cliqueSets:
-            vars = vars | cs
-        varD = {v: set() for v in vars}
-        for v in vars:
+            clique = clique | cs
+        varD = {v: set() for v in clique}
+        for v in clique:
             for cs in cliqueSets:
                 if v in cs:
                     varD[v] = varD[v] | cs
         order = []
         # Iterate through all edges now, select min degree variable and all add those edges to each other variable that
         # the edge was connected to.
-        for i in range(len(vars)):
+        for i in range(len(clique)):
             minVar = list(varD.keys())[0]
             minDegree = len(varD[minVar])
-            for var in vars:
+            for var in clique:
                 if len(varD[var]) < minDegree:
                     minVar = var
                     minDegree = len(varD[minVar])
             order.append(minVar)
-            for var in vars:
+            for var in clique:
                 if minVar in varD[var]:
                     varD[var] = varD[var] | varD[minVar]
                     varD[var] = varD[var] - {minVar}
             del (varD[minVar])
-            vars.remove(minVar)
+            clique.remove(minVar)
         return order
 
-    def sumOut(self, factors=None):
-        if factors == None:
+    def sumOut(self, factors=None, minDegreeOrder=None):
+        if factors is None:
             factors = self.factors
+        if minDegreeOrder is None:
+            minDegreeOrder = self.minDegreeOrder
         functions = [f for f in factors]
-        for o in self.minDegreeOrder:
+        for o in minDegreeOrder:
             phi = [f for f in functions if o in f.cliqueScope]
             functions = [f for f in functions if o not in f.cliqueScope]
-            if len(phi) != 0:
-                newPhi = phi.pop()
-                for p in phi:
-                    newPhi = newPhi * p
-                functions.append(newPhi.sumVariable(o))
+            newPhi = phi.pop()
+            for p in phi:
+                newPhi = newPhi * p
+            functions.append(newPhi.sumVariable(o))
         return np.sum(log([f.functionTable[0] for f in functions]))
 
     def instantiateEvidence(self, evidence):
         return [self.factors[i].instantiateEvidence(evidence) for i in range(self.cliques)]
 
     def sampleSumOut(self, w, N, adaptive=False):
-        Z = 0
         X = self.wCutset(w)
         S = []
         Q = []
         VE = []
+        minDegreeOrder = [d for d in self.minDegreeOrder if d not in X]
         for i in range(N):
             sampleEvidence = self.generateSampleUniform(X)
             S.append(sampleEvidence)
-            z = self.sumOut(self.instantiateEvidence(sampleEvidence))
+            z = self.sumOut(self.instantiateEvidence(sampleEvidence), minDegreeOrder)
             VE.append(z)
-            Q.append(sum([log(1/self.card[var]) for var in X]))
-            if 0 == (i+1) % 100 and i-1 > 1 and adaptive:
+            Q.append(sum([log(1 / self.card[var]) for var in X]))
+            if 0 == (i + 1) % 100 and i - 1 > 1 and adaptive:
                 Q = self.adaptiveQ(Q, VE, S)
         return sum([VE[i] - Q[i] for i in range(N)]) / N
 
     def generateSampleUniform(self, X: set):
         return [(var, int(random.uniform(0, self.card[var]))) for var in X]
 
-    def adaptiveQ(self, Q, VE, S):
+    @staticmethod
+    def adaptiveQ(Q, VE, S):
         n = len(Q)
         Qn = [0 for _ in range(n)]
         W = [VE[i] - Q[i] for i in range(n)]
-        Wtot = base**logsumexp(W)
+        Wtot = base ** logsumexp(W)
         for i, s1 in enumerate(S):
             Qn[i] = sum([(1 if s1 == S[j] else 0) * W[j] / Wtot for j in range(n)])
         return Qn
@@ -288,7 +291,8 @@ class GraphicalModel:
         self.card = card
 
 #
-# network = GraphicalModel(fileName)
-# print(network.sampleSumOut(w=w, N=N, adaptive=adaptive))
-
-
+# network = GraphicalModel("Grids_14")
+# import time
+# t = time.time()
+# print(network.sampleSumOut(w=1, N=100, adaptive=True))
+# print(time.time() - t)
