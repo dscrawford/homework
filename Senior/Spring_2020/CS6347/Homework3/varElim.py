@@ -195,7 +195,7 @@ class GraphicalModel:
         S = []
         Q = []
         VE = []
-        minDegreeOrder = [d for d in self.minDegreeOrder if d not in X]
+        minDegreeOrder = self.getOrder(self.instantiateEvidence(self.generateSampleUniform(X)))
         for i in range(N):
             sampleEvidence = self.generateSampleUniform(X)
             S.append(sampleEvidence)
