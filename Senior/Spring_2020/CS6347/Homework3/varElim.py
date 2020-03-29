@@ -23,14 +23,17 @@ import argparse
 # adaptive = args.adaptive
 #
 # random.seed(random_seed)
+
+import time
+
 np.seterr(all='ignore')
 log = np.log10
 base = 10
 
 
 def logsumexp(a):
-    mx = max(a)
-    return log(np.sum([threshold(base ** (log(i) - log(mx))) for i in a])) + log(mx)
+    mx = log(max(a))
+    return log(np.sum([threshold(base ** (log(i) - mx)) for i in a])) + mx
 
 
 def threshold(x):
@@ -40,6 +43,7 @@ def threshold(x):
         return sys.float_info.max
     return x
 
+fileName='1'
 
 class Factor(object):
     card = []
@@ -63,18 +67,19 @@ class Factor(object):
         return index // stride % card
 
     def getAssignments(self, index: int):
-        if (len(self.stride) == 0):
+        if len(self.stride) == 0:
             return 0
         return [self.getAssignment(index, self.stride[i], self.card[self.cliqueScope[i]]) for i in
                 range(len(self.stride))]
 
     def getStride(self, cliqueScope):
         prod = 1
-        a = []
-        for i in reversed(cliqueScope):
-            a.append(prod)
+        n = len(cliqueScope)
+        a = [0 for i in range(n)]
+        for i in range(n):
+            a[i] = prod
             prod = prod * self.card[i]
-        return list(reversed(a))
+        return list(a)
 
     def factorProduct(self, F1, F2):
         clique = np.array(list(set().union(F1.cliqueScope, F2.cliqueScope)))
@@ -92,7 +97,6 @@ class Factor(object):
     def sumVariable(self, v):
         X = self.cliqueScope
         F = self.functionTable
-        S = self.stride
         vi = int(np.argwhere(X == v))
         n = np.product(self.card[X])
         newCs = [x for x in X if x != v]
@@ -136,9 +140,17 @@ class GraphicalModel:
 
     def __init__(self, uaiFile: str):
         self.parseUAI(uaiFile + ".uai")
+<<<<<<< HEAD
         if path.exists(uaiFile + ".uai.evid"):
+=======
+        if (path.exists(uaiFile + ".uai.evid")):
+            print('doing stuff')
+>>>>>>> 351ec2b... Working on nlp project
             self.parseUAIEvidence(uaiFile + ".uai.evid")
+            print([f.cliqueScope for f in self.factors])
             self.factors = self.instantiateEvidence(self.evidence)
+            print(self.evidence)
+            print([f.cliqueScope for f in self.factors])
         self.minDegreeOrder = self.getOrder()
 
     def getOrder(self, factors=None):
@@ -178,6 +190,7 @@ class GraphicalModel:
         if minDegreeOrder is None:
             minDegreeOrder = self.minDegreeOrder
         functions = [f for f in factors]
+<<<<<<< HEAD
         for o in minDegreeOrder:
             phi = [f for f in functions if o in f.cliqueScope]
             functions = [f for f in functions if o not in f.cliqueScope]
@@ -185,6 +198,24 @@ class GraphicalModel:
             for p in phi:
                 newPhi = newPhi * p
             functions.append(newPhi.sumVariable(o))
+=======
+        factor_time = 0
+        sumOuttime = 0
+        for o in self.minDegreeOrder:
+            phi = [f for f in functions if o in f.cliqueScope]
+            functions = [f for f in functions if o not in f.cliqueScope]
+            if len(phi) != 0:
+                newPhi = phi.pop()
+                t = time.time()
+                for p in phi:
+                    newPhi = newPhi * p
+                factor_time += t - time.time()
+                t = time.time()
+                functions.append(newPhi.sumVariable(o))
+                sumOuttime += t - time.time()
+        print('sum time: ', sumOuttime, ', product time:',factor_time)
+
+>>>>>>> 351ec2b... Working on nlp project
         return np.sum(log([f.functionTable[0] for f in functions]))
 
     def instantiateEvidence(self, evidence):
@@ -290,9 +321,14 @@ class GraphicalModel:
         self.factors = [Factor(cliqueScopes[i], functionTables[i], card) for i in range(self.cliques)]
         self.card = card
 
+<<<<<<< HEAD
 #
 # network = GraphicalModel("Grids_14")
 # import time
 # t = time.time()
 # print(network.sampleSumOut(w=1, N=100, adaptive=True))
 # print(time.time() - t)
+=======
+network = GraphicalModel("3")
+print(network.sumOut())
+>>>>>>> 351ec2b... Working on nlp project

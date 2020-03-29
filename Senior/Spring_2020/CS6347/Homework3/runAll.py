@@ -2,7 +2,6 @@ import argparse
 import varElim
 import random
 import time
-
 # parser = argparse.ArgumentParser(description='Variable Elimination with sampling')
 # parser.add_argument('filename', metavar='filename', type=str, help='A filename with its path(no extensions)')
 # parser.add_argument('w', metavar='w', type=int, help='W-cutset value')
