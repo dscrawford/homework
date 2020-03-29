@@ -23,9 +23,6 @@ import argparse
 # adaptive = args.adaptive
 #
 # random.seed(random_seed)
-
-import time
-
 np.seterr(all='ignore')
 log = np.log10
 base = 10
@@ -43,7 +40,6 @@ def threshold(x):
         return sys.float_info.max
     return x
 
-fileName='1'
 
 class Factor(object):
     card = []
@@ -97,6 +93,7 @@ class Factor(object):
     def sumVariable(self, v):
         X = self.cliqueScope
         F = self.functionTable
+        S = self.stride
         vi = int(np.argwhere(X == v))
         n = np.product(self.card[X])
         newCs = [x for x in X if x != v]
@@ -140,17 +137,9 @@ class GraphicalModel:
 
     def __init__(self, uaiFile: str):
         self.parseUAI(uaiFile + ".uai")
-<<<<<<< HEAD
         if path.exists(uaiFile + ".uai.evid"):
-=======
-        if (path.exists(uaiFile + ".uai.evid")):
-            print('doing stuff')
->>>>>>> 351ec2b... Working on nlp project
             self.parseUAIEvidence(uaiFile + ".uai.evid")
-            print([f.cliqueScope for f in self.factors])
             self.factors = self.instantiateEvidence(self.evidence)
-            print(self.evidence)
-            print([f.cliqueScope for f in self.factors])
         self.minDegreeOrder = self.getOrder()
 
     def getOrder(self, factors=None):
@@ -190,7 +179,6 @@ class GraphicalModel:
         if minDegreeOrder is None:
             minDegreeOrder = self.minDegreeOrder
         functions = [f for f in factors]
-<<<<<<< HEAD
         for o in minDegreeOrder:
             phi = [f for f in functions if o in f.cliqueScope]
             functions = [f for f in functions if o not in f.cliqueScope]
@@ -198,44 +186,29 @@ class GraphicalModel:
             for p in phi:
                 newPhi = newPhi * p
             functions.append(newPhi.sumVariable(o))
-=======
-        factor_time = 0
-        sumOuttime = 0
-        for o in self.minDegreeOrder:
-            phi = [f for f in functions if o in f.cliqueScope]
-            functions = [f for f in functions if o not in f.cliqueScope]
-            if len(phi) != 0:
-                newPhi = phi.pop()
-                t = time.time()
-                for p in phi:
-                    newPhi = newPhi * p
-                factor_time += t - time.time()
-                t = time.time()
-                functions.append(newPhi.sumVariable(o))
-                sumOuttime += t - time.time()
-        print('sum time: ', sumOuttime, ', product time:',factor_time)
-
->>>>>>> 351ec2b... Working on nlp project
         return np.sum(log([f.functionTable[0] for f in functions]))
 
     def instantiateEvidence(self, evidence):
         return [self.factors[i].instantiateEvidence(evidence) for i in range(self.cliques)]
 
-    def sampleSumOut(self, w, N, adaptive=False):
+    def sampleSumOut(self, w, N):
         X = self.wCutset(w)
         S = []
         Q = []
+        Qa = []
         VE = []
-        minDegreeOrder = self.getOrder(self.instantiateEvidence(self.generateSampleUniform(X)))
+        minDegreeOrder = [o for o in self.minDegreeOrder if o not in X]
         for i in range(N):
             sampleEvidence = self.generateSampleUniform(X)
             S.append(sampleEvidence)
             z = self.sumOut(self.instantiateEvidence(sampleEvidence), minDegreeOrder)
             VE.append(z)
-            Q.append(sum([log(1 / self.card[var]) for var in X]))
-            if 0 == (i + 1) % 100 and i - 1 > 1 and adaptive:
-                Q = self.adaptiveQ(Q, VE, S)
-        return sum([VE[i] - Q[i] for i in range(N)]) / N
+            q = sum([log(1 / self.card[var]) for var in X])
+            Q.append(q)
+            Qa.append(q)
+            if 0 == (i + 1) % 100 and i + 1 > 1:
+                Qa = self.adaptiveQ(Qa, VE, S)
+        return (sum([VE[i] - Q[i] for i in range(N)]) / N), (sum([VE[i] - Qa[i] for i in range(N)]) / N)
 
     def generateSampleUniform(self, X: set):
         return [(var, int(random.uniform(0, self.card[var]))) for var in X]
@@ -320,15 +293,3 @@ class GraphicalModel:
                     data = None if i == self.cliques - 1 else s.pop(0)
         self.factors = [Factor(cliqueScopes[i], functionTables[i], card) for i in range(self.cliques)]
         self.card = card
-
-<<<<<<< HEAD
-#
-# network = GraphicalModel("Grids_14")
-# import time
-# t = time.time()
-# print(network.sampleSumOut(w=1, N=100, adaptive=True))
-# print(time.time() - t)
-=======
-network = GraphicalModel("3")
-print(network.sumOut())
->>>>>>> 351ec2b... Working on nlp project
