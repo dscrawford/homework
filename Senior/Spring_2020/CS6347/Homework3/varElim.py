@@ -7,28 +7,6 @@ import random
 import sys
 import argparse
 
-parser = argparse.ArgumentParser(description='Variable Elimination with sampling')
-parser.add_argument('filename', metavar='filename', type=str, help='A filename with its path(no extensions)')
-parser.add_argument('w', metavar='w', type=int, help='W-cutset value')
-parser.add_argument('N', metavar='N', type=int, help='Number of samples to take')
-parser.add_argument('--random_seed', metavar='random', type=int, help='Random seed, like it says')
-parser.add_argument('--adaptive', metavar='adaptive', type=bool,
-                    help='Whether to use adaptive distribution or not')
-
-args = parser.parse_args()
-fileName = args.filename
-w = args.w
-N = args.N
-random_seed = args.random_seed
-adaptive = args.adaptive
-
-if random_seed is None:
-    random_seed = 123456789
-
-if adaptive is None:
-    adaptive = False
-
-random.seed(random_seed)
 np.seterr(all='ignore')
 log = np.log10
 base = 10
@@ -299,9 +277,3 @@ class GraphicalModel:
                     data = None if i == self.cliques - 1 else s.pop(0)
         self.factors = [Factor(cliqueScopes[i], functionTables[i], card) for i in range(self.cliques)]
         self.card = card
-
-
-network = GraphicalModel(fileName)
-result = network.sampleSumOut(w=w, N=N)
-result = result[0] if adaptive == False else result[1]
-print(result)
