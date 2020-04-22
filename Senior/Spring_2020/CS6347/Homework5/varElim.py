@@ -5,25 +5,23 @@ import regex as re
 from os import path
 import random
 import sys
-import argparse
 from copy import deepcopy
+from logdouble import Log_Double
 
 np.seterr(all='ignore')
-log = np.log10
-base = 10
 
 
-def logsumexp(a):
-    mx = log(max(a))
-    return log(np.sum([threshold(base ** (log(i) - mx)) for i in a])) + mx
-
-
-def threshold(x):
-    if x < 1e-10:
-        return 0.0
-    elif x == float('inf'):
-        return sys.float_info.max
-    return x
+# def logsumexp(a):
+#     mx = log(max(a))
+#     return log(np.sum([threshold(base ** (log(i) - mx)) for i in a])) + mx
+#
+#
+# def threshold(x):
+#     if x < 1e-10:
+#         return 0.0
+#     elif x == float('inf'):
+#         return sys.float_info.max
+#     return x
 
 
 class Factor:
@@ -53,6 +51,10 @@ class Factor:
         return [self.getAssignment(index, self.stride[-(i+1)], self.card[self.cliqueScope[-(i+1)]]) for i in
                 range(len(self.stride))]
 
+    def getAssignmentsAsEvidence(self, index: int):
+        assign = self.getAssignments(index)
+        return {self.cliqueScope[i]: assign[i] for i in range(len(self.cliqueScope))}
+
     def getStride(self, cliqueScope):
         prod = 1
         a = []
@@ -60,6 +62,11 @@ class Factor:
             a.append(prod)
             prod = prod * self.card[cliqueScope[i]]
         return a
+
+    def getSize(self):
+        if len(self.cliqueScope) == 0:
+            return 1
+        return int(np.product([self.card[var] for var in self.cliqueScope]))
 
     def factorProduct(self, F1, F2):
         clique = np.array(list(set().union(F1.cliqueScope, F2.cliqueScope)))
@@ -70,13 +77,12 @@ class Factor:
         x1i = [i for i in range(len(clique)) if clique[i] in f1_clique_set]
         x2i = [i for i in range(len(clique)) if clique[i] in f2_clique_set]
         vn = np.product([card[var] for var in clique])
-        F3 = Factor(clique, np.full(vn, 0.0), card)
+        F3 = Factor(clique, np.full(vn, Log_Double()), card)
         for i in range(vn):
             assign = np.array(F3.getAssignments(i))
             x1 = F1.functionTable[F1.getIndex(assign[x1i])]
             x2 = F2.functionTable[F2.getIndex(assign[x2i])]
-            F3.functionTable[i] = threshold(x1 * x2)
-        print(F3.functionTable)
+            F3.functionTable[i] = (x1 * x2)
         return F3
 
     def sumVariable(self, v):
@@ -85,30 +91,29 @@ class Factor:
         newCs = [x for x in self.cliqueScope if x != v]
         newcard = self.card.copy()
         del(newcard[v])
-        newPhi = Factor(newCs, [[] for _ in range(n // self.card[v])], newcard)
+        newPhi = Factor(newCs, [Log_Double() for _ in range(n // self.card[v])], newcard)
         for i in range(n):
             assign = self.getAssignments(i)
-            newPhi.functionTable[newPhi.getIndex(np.delete(assign, vi))] += [self.functionTable[i]]
-        newPhi.functionTable = [threshold(base ** logsumexp(i)) for i in newPhi.functionTable]
+            index = newPhi.getIndex(np.delete(assign, vi))
+            newPhi.functionTable[index] += self.functionTable[i]
         return newPhi
 
     def instantiateEvidence(self, evidence):
-        evid = {var: d for var, d in evidence}
         evid_i = []
         non_evid_i = []
         for j in range(len(self.cliqueScope)):
-            if self.cliqueScope[j] in evid:
+            if self.cliqueScope[j] in evidence:
                 evid_i.append(j)
             else:
                 non_evid_i.append(j)
-        new_clique_scope = [cs for cs in self.cliqueScope if cs not in evid]
+        new_clique_scope = [cs for cs in self.cliqueScope if cs not in evidence]
         new_n = int(np.product([self.card[cs] for cs in new_clique_scope]))
         new_card = self.card.copy()
         for vari in evid_i:
             del(new_card[self.cliqueScope[vari]])
-        newFactor = Factor(new_clique_scope, np.full(new_n, 0.0), new_card)
+        newFactor = Factor(new_clique_scope, np.full(new_n, Log_Double()), new_card)
         assign = np.full(len(self.cliqueScope), 0)
-        assign[evid_i] = [evid[self.cliqueScope[i]] for i in evid_i]
+        assign[evid_i] = [evidence[self.cliqueScope[i]] for i in evid_i]
         for i in range(new_n):
             assign[non_evid_i] = newFactor.getAssignments(i)
             newFactor.functionTable[i] = self.functionTable[self.getIndex(assign)]
@@ -122,7 +127,7 @@ class Network:
     networkType = ""
     varN = 0
     cliques = 0
-    evidence = np.array([])
+    evidence = {}
     minDegreeOrder = []
     factors = []
     card = {}
@@ -135,7 +140,7 @@ class Network:
     def parseUAIEvidence(self, evidenceFile: str):
         s = [t for t in open(evidenceFile, "r").read().split(' ') if t]
         observedVariables = int(s.pop(0))
-        self.evidence = [(int(s[2 * i]), int(s[2 * i + 1])) for i in range(0, observedVariables)]
+        self.evidence = {int(s[2 * i]): int(s[2 * i + 1]) for i in range(observedVariables)}
 
     def parseUAI(self, uaiFile: str, ignore_factors=False):
         s = re.sub('^c.*\n?', '', open(uaiFile, "r").read(), flags=re.MULTILINE)
@@ -165,16 +170,16 @@ class Network:
                     entries = []
                     entriesAdded = 0
                     while entriesAdded != entriesN:
-                        newEntries = [float(d) for d in s.pop(0).split(' ') if d]
+                        newEntries = [Log_Double(float(d)) for d in s.pop(0).split(' ') if d]
                         entriesAdded += len(newEntries)
                         entries += newEntries
-                    functionTables += [np.array(entries).astype(np.float64)]
+                    functionTables += [np.array(entries)]
                     data = None if i == self.cliques - 1 else s.pop(0)
         if not ignore_factors:
             self.factors = [Factor(cliqueScopes[i], functionTables[i], {var: card[var] for var in cliqueScopes[i]})
                             for i in range(self.cliques)]
         else:
-            self.factors = [Factor(cliqueScopes[i], None, {var: card[var] for var in cliqueScopes[i]})
+            self.factors = [Factor(cliqueScopes[i], np.full(len(functionTables[i]), Log_Double()), {var: card[var] for var in cliqueScopes[i]})
                             for i in range(self.cliques)]
         self.card = card
         self.cliqueScopes = cliqueScopes
@@ -184,7 +189,7 @@ class GraphicalModel:
     networkType = ""
     varN = 0
     cliques = 0
-    evidence = np.array([])
+    evidence = {}
     minDegreeOrder = []
     factors = []
     card = {}
@@ -230,25 +235,24 @@ class GraphicalModel:
             clique.remove(minVar)
         return order
 
-    def getLikelihood(self, factors=None, minDegreeOrder=None, evidence=[]):
+    def getLikelihood(self, factors=None, order=None, evidence={}):
         if factors is None:
             factors = self.factors
-        if minDegreeOrder is None:
-            minDegreeOrder = self.minDegreeOrder
+        if order is None:
+            order = self.minDegreeOrder
         if len(evidence) > 0:
             factors = self.instantiateEvidence(evidence)
         functions = [Factor(f.cliqueScope, f.functionTable, f.card) for f in factors]
-
-        if len(evidence) + len(self.evidence) != self.varN:
-            for o in minDegreeOrder:
-                phi = [f for f in functions if o in f.cliqueScope]
-                functions = [f for f in functions if o not in f.cliqueScope]
-                if len(phi) > 0:
-                    newPhi = phi.pop()
-                    for p in phi:
-                        newPhi = newPhi * p
-                    functions.append(newPhi.sumVariable(o))
-        return np.sum(log([f.functionTable[0] for f in functions]))
+        order = [o for o in order if o not in evidence and o not in self.evidence]
+        for o in order:
+            phi = [f for f in functions if o in f.cliqueScope]
+            functions = [f for f in functions if o not in f.cliqueScope]
+            if len(phi) > 0:
+                newPhi = phi.pop()
+                for p in phi:
+                    newPhi = newPhi * p
+                functions.append(newPhi.sumVariable(o))
+        return np.product([f.functionTable[0] for f in functions])
 
     def instantiateEvidence(self, evidence):
         return [self.factors[i].instantiateEvidence(evidence) for i in range(self.cliques)]
@@ -263,9 +267,9 @@ class GraphicalModel:
         for i in range(N):
             sampleEvidence = self.generateSampleUniform(X)
             S.append(sampleEvidence)
-            z = self.getLikelihood(self.instantiateEvidence(sampleEvidence), minDegreeOrder)
+            z = self.getLikelihood(evidence=sampleEvidence, order=minDegreeOrder)
             VE.append(z)
-            q = sum([log(1 / self.card[var]) for var in X])
+            q = sum([Log_Double(1 / self.card[var]) for var in X])
             Q.append(q)
             Qa.append(q)
             if 0 == (i + 1) % 100 and i + 1 > 1:
@@ -273,18 +277,18 @@ class GraphicalModel:
         return (sum([VE[i] - Q[i] for i in range(N)]) / N), (sum([VE[i] - Qa[i] for i in range(N)]) / N)
 
     def generateSampleUniform(self, X: set):
-        return [(var, int(random.uniform(0, self.card[var]))) for var in X]
+        return {var: int(random.uniform(0, self.card[var])) for var in X}
 
     @staticmethod
     def adaptiveQ(Q, VE, S):
         n = len(Q)
-        Qn = [0 for _ in range(n)]
+        Qn = [Log_Double() for _ in range(n)]
         W = [VE[i] - Q[i] for i in range(n)]
-        Wtot = base ** logsumexp(W)
+        Wtot = sum(W)
         for i, s1 in enumerate(S):
             Qn[i] = sum([(1 if s1 == S[j] else 0) * W[j] / Wtot for j in range(n)])
         return Qn
-
+    #
     # wCutset(C, m, w): where C is the cliques and m is the min-degree ordering
     # let t be an empty tree
     # t <- schematic bucket elimination induced tree
@@ -314,6 +318,3 @@ class GraphicalModel:
             tree = [[c for c in cs if c != v] for cs in tree]
             X = X.union({v})
         return X
-
-network = GraphicalModel(Network("1"))
-print(network.getLikelihood())

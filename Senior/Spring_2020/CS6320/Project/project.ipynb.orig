@@ -1,0 +1,646 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "collapsed": true,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import xml.etree.ElementTree as ET\n",
+    "import re\n",
+    "from collections import defaultdict\n",
+    "import time\n",
+    "import numpy as np\n",
+    "import torch\n",
+    "import torch.nn as nn\n",
+    "import torch.optim as optim\n",
+    "from torch.utils.data import TensorDataset, RandomSampler, SequentialSampler, DataLoader\n",
+    "import torch.nn.functional as F\n",
+    "from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score\n",
+    "\n",
+    "def reportPerformance(y_pred, test_labels, description):                                                                                                                                                                                \n",
+    "    print(description)                                                                                                                                                                                                                  \n",
+    "    print('Accuracy:  ', accuracy_score(test_labels, y_pred), '\\n',                                                                                                                                                                     \n",
+    "          'Precision: ', precision_score(test_labels, y_pred), '\\n',                                                                                                                                                                    \n",
+    "          'Recall:    ', recall_score(test_labels, y_pred), '\\n',                                                                                                                                                                       \n",
+    "          'F-Score:   ', f1_score(test_labels, y_pred), '\\n', sep='')\n",
+    "\n",
+    "trainFile = 'train.xml'\n",
+    "testFile = 'test.xml'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "outputs": [],
+   "source": [
+    "class Dataset(TensorDataset):\n",
+    "    def __init__(self, p=None, h=None, l=None):\n",
+    "        if p is None and h is None and l is None :\n",
+    "            return\n",
+    "        self.p = torch.from_numpy(np.array(p))\n",
+    "        self.h = torch.from_numpy(np.array(h))\n",
+    "        labels = np.array([[1 if i == 1 else 0, 1 if i ==2 else 0] for i in l])\n",
+    "        self.labels = torch.from_numpy(labels).type(torch.FloatTensor)\n",
+    "    \n",
+    "    def to(self, device):\n",
+    "        newDataset = Dataset()\n",
+    "        newDataset.p = self.p.to(device)\n",
+    "        newDataset.h = self.h.to(device)\n",
+    "        newDataset.labels = self.labels.to(device)\n",
+    "        return newDataset\n",
+    "    \n",
+    "    def __len__(self):\n",
+    "        return len(self.p)\n",
+    "    \n",
+    "    def __getitem__(self, item):\n",
+    "        n = len(self.p[item])\n",
+    "        return torch.cat((self.p[item].view(-1,n), self.h[item].view(-1,n))), self.labels[item]"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "outputs": [],
+   "source": [
+    "class RNN(nn.Module):\n",
+    "    def __init__(self, vocab_length, embedding_dim, hidden_dim, output_dim, lstm_layers):\n",
+    "        super().__init__()\n",
+    "        self.embedding = nn.Embedding(vocab_length, embedding_dim)\n",
+<<<<<<< HEAD
+    "        self.lstm = nn.LSTM(embedding_dim, hidden_dim, bidirectional=False)\n",
+    "        self.lstm2 = nn.LSTM(hidden_dim, hidden_dim, bidirectional=True)\n",
+    "        self.fc = nn.Linear(2*hidden_dim, output_dim)\n",
+=======
+    "        self.lstm = nn.LSTM(embedding_dim, hidden_dim, bidirectional=True)\n",
+    "        self.lstmL = []\n",
+    "        current_dim = hidden_dim * 2\n",
+    "        for i in range(lstm_layers):\n",
+    "            self.lstmL.append(nn.LSTM(current_dim, hidden_dim))\n",
+    "            current_dim = hidden_dim\n",
+    "        self.lstmL = nn.ModuleList(self.lstmL)\n",
+    "        self.fc = nn.Linear(current_dim, output_dim)\n",
+>>>>>>> 44f4fef... Big optimizations to varelim code
+    "        self.n = embedding_dim\n",
+    "        \n",
+    "    def forward(self, p, h):\n",
+    "        n = len(p)\n",
+    "        et = self.embedding(p)\n",
+    "        ht = self.embedding(h)\n",
+    "        rt, _ = self.lstm(et.view(n,1,-1))\n",
+    "        rh, _ = self.lstm(ht.view(n,1,-1))\n",
+<<<<<<< HEAD
+    "        rt, _ = self.lstm2(rt)\n",
+    "        rh, _ = self.lstm2(rh)\n",
+    "        rth = torch.cat((rt.view(self.n,-1),rh.view(self.n,-1)), dim=0)\n",
+    "        fc = self.fc(torch.sum(rth, dim=0))\n",
+=======
+    "        for lstm in self.lstmL:\n",
+    "            rt, _ = lstm(rt)\n",
+    "            rh, _ = lstm(rh)\n",
+    "        rth = torch.cat((rt.view(self.n,-1),rh.view(self.n,-1)), dim=0)\n",
+    "        fc = self.fc(torch.sum(rth,dim=0))\n",
+>>>>>>> 44f4fef... Big optimizations to varelim code
+    "        return F.softmax(fc,dim=0)"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "outputs": [],
+   "source": [
+    "class ModelTools():\n",
+    "    def __init__(self, model, optimizer, criterion, device):\n",
+    "        self.model = model.to(device)\n",
+    "        self.optimizer = optimizer\n",
+    "        self.criterion = criterion.to(device)\n",
+    "        self.device = device\n",
+    "        \n",
+    "    def train(self, trainData, testData, N_EPOCHS=10):\n",
+    "        N_EPOCHS = N_EPOCHS\n",
+    "        best_valid_loss = float('inf')\n",
+    "        for epoch in range(N_EPOCHS):\n",
+    "            t = time.time()\n",
+    "            train_loss, train_acc = self.trainModel(trainData)\n",
+    "            valid_loss, valid_acc = self.evaluateModel(testData)\n",
+<<<<<<< HEAD
+    "            epoch_secs = time.time() - t            \n",
+=======
+    "            epoch_secs = time.time() - t\n",
+    "            if valid_loss < best_valid_loss:\n",
+    "                torch.save(model.state_dict(), 'best_model.h2')\n",
+    "                best_valid_loss = valid_loss\n",
+>>>>>>> 44f4fef... Big optimizations to varelim code
+    "            print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_secs:.2f}s')\n",
+    "            print(f'\\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}%')\n",
+    "            print(f'\\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc*100:.2f}%')\n",
+    "\n",
+    "    def trainModel(self, data):\n",
+    "        \n",
+    "        epoch_loss = 0\n",
+    "        epoch_acc = 0\n",
+    "        \n",
+    "        self.model.train()\n",
+    "        \n",
+    "        for d in data:\n",
+    "            optimizer.zero_grad()\n",
+    "            p = [i[0] for i in d[0]]\n",
+    "            h = [i[1] for i in d[0]]\n",
+    "            batch_labels = torch.cat([i.unsqueeze(0) for i in d[1]])\n",
+    "            predictions = torch.cat([self.model(p[i], h[i]).unsqueeze(0) for i in range(len(p))])\n",
+    "            loss = self.criterion(predictions, batch_labels)\n",
+    "            acc = self.accuracy(predictions, batch_labels)\n",
+    "            loss.backward()\n",
+    "            optimizer.step()\n",
+    "            \n",
+    "            epoch_loss += loss.item()\n",
+    "            epoch_acc += acc.item()\n",
+    "        return epoch_loss / len(data), epoch_acc / len(data)\n",
+    "    \n",
+    "    def evaluateModel(self, data):\n",
+    "        epoch_loss = 0\n",
+    "        epoch_acc = 0\n",
+    "        \n",
+    "        self.model.eval()\n",
+    "        \n",
+    "        with torch.no_grad():\n",
+    "            for d in data:\n",
+    "                p = [i[0] for i in d[0]]\n",
+    "                h = [i[1] for i in d[0]]\n",
+    "                batch_labels = torch.cat([i.unsqueeze(0) for i in d[1]])\n",
+    "                predictions = torch.cat([self.model(p[i], h[i]).unsqueeze(0) for i in range(len(p))])   \n",
+    "                loss = self.criterion(predictions, batch_labels)\n",
+    "                acc = self.accuracy(batch_labels, predictions)\n",
+    "                epoch_loss += loss.item()\n",
+    "                epoch_acc += acc.item()\n",
+    "            \n",
+    "        return epoch_loss / len(data), epoch_acc / len(data)\n",
+    "    \n",
+    "    def predict(self, data):\n",
+    "        self.model.eval()\n",
+    "        predictions = torch.Tensor().type(torch.LongTensor).to(self.device)\n",
+    "        with torch.no_grad():\n",
+    "            for d in data:\n",
+    "                p = [i[0] for i in d[0]]\n",
+    "                h = [i[1] for i in d[0]]\n",
+    "                output = torch.cat([self.model(p[i], h[i]).argmax().view(1,-1) + 1 for i in range(len(p))])\n",
+    "                predictions = torch.cat((predictions,output))\n",
+<<<<<<< HEAD
+    "        return torch.flatten(predictions)\n",
+=======
+    "        return torch.flatten(predictions).cpu().detach()\n",
+>>>>>>> 44f4fef... Big optimizations to varelim code
+    "    \n",
+    "    def accuracy(self, y_true, y_pred):\n",
+    "        a = y_true.argmax(dim=1)\n",
+    "        b = y_pred.argmax(dim=1)\n",
+    "        return torch.sum(torch.eq(a,b)).type(torch.FloatTensor) / len(a)"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "outputs": [],
+   "source": [
+    "class XMLToTensor:\n",
+    "    def __init__(self, files, maxLength=None):\n",
+    "        data = np.array([self.parseXML(file) for file in files])\n",
+    "        self.p = np.array([p for f in data for p in f[0]])\n",
+    "        self.h = np.array([p for f in data for p in f[1]])\n",
+    "        self.l = np.array([p for f in data for p in f[2]])\n",
+    "        self.wd = self.createWordToIntegerDict([word for words in self.p for word in words] + \n",
+    "                                               [word for words in self.h for word in words])\n",
+    "        self.ld = self.createWordToIntegerDict([label for label in self.l])\n",
+    "        if maxLength is None:\n",
+    "            self.maxLength = max([len(s) for s in self.p + self.h])\n",
+    "        else:\n",
+    "            self.maxLength = maxLength\n",
+    "        \n",
+    "    def getTensor(self):\n",
+    "        p,h,l = self.prepareDataset(self.p,self.h,self.l)\n",
+    "        return Dataset(p,h,l)\n",
+    "    \n",
+    "    def splitTensor(self, trainSplit, testSplit):\n",
+    "        if trainSplit + testSplit != 1:\n",
+    "            print('Invalid split')\n",
+    "            return None\n",
+    "        n = len(self.p)\n",
+    "        p,h,l = self.prepareDataset(self.p,self.h,self.l)\n",
+    "        splitI = int(trainSplit * n)\n",
+    "        return Dataset(p[0:splitI],h[0:splitI],l[0:splitI]), Dataset(p[splitI:n], h[splitI:n], l[splitI:n])\n",
+    "        \n",
+    "    def getWordDictionary(self):\n",
+    "        return self.wd\n",
+    "    \n",
+    "    def getLabelDictionary(self):\n",
+    "        return self.ld\n",
+    "    \n",
+    "    def parseXML(self, file):\n",
+    "        tree = ET.parse(file)\n",
+    "        root = tree.getroot()\n",
+    "        pairs = root.findall('./pair')\n",
+    "        p = np.array([re.sub(\"[^\\w]\", \" \", pair.find('./t').text.lower()).split() for pair in pairs])\n",
+    "        h = np.array([re.sub(\"[^\\w]\", \" \", pair.find('./h').text.lower()).split() for pair in pairs])\n",
+    "        l = np.array([pair.get('value') for pair in pairs])\n",
+    "        return p,h,l\n",
+    "    \n",
+    "    def createWordToIntegerDict(self,words):\n",
+    "        d = defaultdict(int)\n",
+    "        i = 0\n",
+    "        for word in words:\n",
+    "            if d[word] == 0:\n",
+    "                i += 1\n",
+    "                d[word] = i\n",
+    "        return d\n",
+    "    \n",
+    "    def transformWordsToIntegers(self,w, d):\n",
+    "        return [[d[word] for word in words] for words in w]\n",
+    "        \n",
+    "    def transformListsToUniformLength(self,w, padding=0):\n",
+    "        L = [[padding for _ in range(self.maxLength)] for _ in w]\n",
+    "        for i,l in enumerate(w):\n",
+    "            end = len(l) if len(l) <= self.maxLength else self.maxLength\n",
+    "            L[i][0:end] = l[0:end]\n",
+    "        return L\n",
+    "        \n",
+    "    def prepareDataset(self, p, h, l):\n",
+    "        p = self.transformListsToUniformLength(self.transformWordsToIntegers(p, self.wd))\n",
+    "        h = self.transformListsToUniformLength(self.transformWordsToIntegers(h, self.wd))\n",
+    "        l = [self.ld[l] for l in l]\n",
+    "        return p,h,l"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "outputs": [],
+   "source": [
+<<<<<<< HEAD
+    "data = XMLToTensor([trainFile, testFile], maxLength=50)\n",
+    "maxLength = data.maxLength\n",
+    "train, test = data.splitTensor(0.8,0.2)\n",
+    "wordDict = data.getWordDictionary()\n",
+    "device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')\n",
+    "model = RNN(len(wordDict) + 1, maxLength, maxLength, 2).to(device)\n",
+    "criterion = nn.BCELoss()\n",
+    "optimizer = optim.Adam(model.parameters(), lr=1e-5)\n",
+=======
+    "data = XMLToTensor([trainFile, testFile], maxLength=10)\n",
+    "maxLength = data.maxLength\n",
+    "train, test = data.splitTensor(0.9,0.1)\n",
+    "wordDict = data.getWordDictionary()\n",
+    "device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')\n",
+    "model = RNN(len(wordDict) + 1, maxLength, 30, 2, 3).to(device)\n",
+    "criterion = nn.BCELoss()\n",
+    "optimizer = optim.SGD(model.parameters(), lr=1e-3)\n",
+>>>>>>> 44f4fef... Big optimizations to varelim code
+    "model = model.to(device)\n",
+    "criterion = criterion.to(device)\n",
+    "train = train.to(device)\n",
+    "test = test.to(device)\n",
+    "trainSampler = RandomSampler(train)\n",
+    "testSampler = SequentialSampler(test)\n",
+<<<<<<< HEAD
+    "train = DataLoader(train, batch_size=5, sampler=trainSampler)\n",
+=======
+    "train = DataLoader(train, batch_size=1, sampler=trainSampler)\n",
+>>>>>>> 44f4fef... Big optimizations to varelim code
+    "test = DataLoader(test, batch_size=1, sampler=testSampler)"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "outputs": [
+    {
+     "name": "stdout",
+     "text": [
+<<<<<<< HEAD
+      "The model has 439,352 trainable parameters\n"
+=======
+      "The model has 111,652 trainable parameters\n"
+>>>>>>> 44f4fef... Big optimizations to varelim code
+     ],
+     "output_type": "stream"
+    }
+   ],
+   "source": [
+    "def count_parameters(model):\n",
+    "    return sum(p.numel() for p in model.parameters() if p.requires_grad)\n",
+    "\n",
+    "print(f'The model has {count_parameters(model):,} trainable parameters')"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+<<<<<<< HEAD
+   "execution_count": null,
+=======
+   "execution_count": 8,
+>>>>>>> 44f4fef... Big optimizations to varelim code
+   "outputs": [
+    {
+     "name": "stdout",
+     "text": [
+<<<<<<< HEAD
+      "Epoch: 01 | Epoch Time: 6.83s\n",
+      "\tTrain Loss: 2.485 | Train Acc: 50.05%\n",
+      "\t Val. Loss: 0.736 |  Val. Acc: 48.91%\n",
+      "Epoch: 02 | Epoch Time: 6.78s\n",
+      "\tTrain Loss: 0.774 | Train Acc: 47.03%\n",
+      "\t Val. Loss: 0.721 |  Val. Acc: 48.18%\n",
+      "Epoch: 03 | Epoch Time: 6.79s\n",
+      "\tTrain Loss: 0.756 | Train Acc: 46.79%\n",
+      "\t Val. Loss: 0.715 |  Val. Acc: 48.54%\n",
+      "Epoch: 04 | Epoch Time: 6.69s\n",
+      "\tTrain Loss: 0.740 | Train Acc: 46.70%\n",
+      "\t Val. Loss: 0.716 |  Val. Acc: 50.73%\n",
+      "Epoch: 05 | Epoch Time: 6.72s\n",
+      "\tTrain Loss: 0.730 | Train Acc: 49.71%\n",
+      "\t Val. Loss: 0.698 |  Val. Acc: 51.46%\n",
+      "Epoch: 06 | Epoch Time: 6.72s\n",
+      "\tTrain Loss: 0.724 | Train Acc: 47.67%\n",
+      "\t Val. Loss: 0.695 |  Val. Acc: 51.82%\n",
+      "Epoch: 07 | Epoch Time: 6.72s\n",
+      "\tTrain Loss: 0.720 | Train Acc: 49.74%\n",
+      "\t Val. Loss: 0.693 |  Val. Acc: 52.92%\n",
+      "Epoch: 08 | Epoch Time: 6.69s\n",
+      "\tTrain Loss: 0.718 | Train Acc: 48.22%\n",
+      "\t Val. Loss: 0.695 |  Val. Acc: 51.82%\n",
+      "Epoch: 09 | Epoch Time: 6.70s\n",
+      "\tTrain Loss: 0.716 | Train Acc: 48.98%\n",
+      "\t Val. Loss: 0.691 |  Val. Acc: 54.38%\n",
+      "Epoch: 10 | Epoch Time: 6.70s\n",
+      "\tTrain Loss: 0.715 | Train Acc: 48.83%\n",
+      "\t Val. Loss: 0.691 |  Val. Acc: 51.46%\n",
+      "Epoch: 11 | Epoch Time: 6.73s\n",
+      "\tTrain Loss: 0.713 | Train Acc: 50.44%\n",
+      "\t Val. Loss: 0.691 |  Val. Acc: 51.09%\n",
+      "Epoch: 12 | Epoch Time: 6.78s\n",
+      "\tTrain Loss: 0.711 | Train Acc: 50.02%\n",
+      "\t Val. Loss: 0.691 |  Val. Acc: 52.92%\n",
+      "Epoch: 13 | Epoch Time: 6.69s\n",
+      "\tTrain Loss: 0.709 | Train Acc: 49.74%\n",
+      "\t Val. Loss: 0.692 |  Val. Acc: 54.01%\n",
+      "Epoch: 14 | Epoch Time: 6.71s\n",
+      "\tTrain Loss: 0.710 | Train Acc: 49.74%\n",
+      "\t Val. Loss: 0.693 |  Val. Acc: 52.19%\n",
+      "Epoch: 15 | Epoch Time: 6.68s\n",
+      "\tTrain Loss: 0.709 | Train Acc: 50.14%\n",
+      "\t Val. Loss: 0.693 |  Val. Acc: 52.55%\n",
+      "Epoch: 16 | Epoch Time: 6.79s\n",
+      "\tTrain Loss: 0.709 | Train Acc: 50.99%\n",
+      "\t Val. Loss: 0.690 |  Val. Acc: 54.38%\n",
+      "Epoch: 17 | Epoch Time: 6.75s\n",
+      "\tTrain Loss: 0.705 | Train Acc: 52.39%\n",
+      "\t Val. Loss: 0.700 |  Val. Acc: 51.46%\n",
+      "Epoch: 18 | Epoch Time: 6.71s\n",
+      "\tTrain Loss: 0.707 | Train Acc: 48.65%\n",
+      "\t Val. Loss: 0.690 |  Val. Acc: 54.01%\n",
+      "Epoch: 19 | Epoch Time: 6.69s\n",
+      "\tTrain Loss: 0.706 | Train Acc: 50.47%\n",
+      "\t Val. Loss: 0.691 |  Val. Acc: 54.01%\n",
+      "Epoch: 20 | Epoch Time: 6.71s\n",
+      "\tTrain Loss: 0.700 | Train Acc: 52.09%\n",
+      "\t Val. Loss: 0.695 |  Val. Acc: 52.92%\n",
+      "Epoch: 21 | Epoch Time: 6.79s\n",
+      "\tTrain Loss: 0.703 | Train Acc: 52.57%\n",
+      "\t Val. Loss: 0.690 |  Val. Acc: 54.38%\n",
+      "Epoch: 22 | Epoch Time: 6.72s\n",
+      "\tTrain Loss: 0.702 | Train Acc: 51.11%\n",
+      "\t Val. Loss: 0.695 |  Val. Acc: 52.92%\n",
+      "Epoch: 23 | Epoch Time: 6.68s\n",
+      "\tTrain Loss: 0.702 | Train Acc: 52.75%\n",
+      "\t Val. Loss: 0.696 |  Val. Acc: 52.19%\n",
+      "Epoch: 24 | Epoch Time: 6.70s\n",
+      "\tTrain Loss: 0.699 | Train Acc: 53.76%\n",
+      "\t Val. Loss: 0.693 |  Val. Acc: 52.19%\n",
+      "Epoch: 25 | Epoch Time: 6.67s\n",
+      "\tTrain Loss: 0.700 | Train Acc: 52.21%\n",
+      "\t Val. Loss: 0.690 |  Val. Acc: 54.38%\n",
+      "Epoch: 26 | Epoch Time: 6.74s\n",
+      "\tTrain Loss: 0.697 | Train Acc: 52.85%\n",
+      "\t Val. Loss: 0.691 |  Val. Acc: 52.92%\n",
+      "Epoch: 27 | Epoch Time: 6.73s\n",
+      "\tTrain Loss: 0.696 | Train Acc: 52.69%\n",
+      "\t Val. Loss: 0.690 |  Val. Acc: 53.65%\n",
+      "Epoch: 28 | Epoch Time: 6.72s\n",
+      "\tTrain Loss: 0.694 | Train Acc: 51.81%\n",
+      "\t Val. Loss: 0.698 |  Val. Acc: 54.38%\n",
+      "Epoch: 29 | Epoch Time: 6.71s\n",
+      "\tTrain Loss: 0.694 | Train Acc: 53.73%\n",
+      "\t Val. Loss: 0.703 |  Val. Acc: 51.09%\n",
+      "Epoch: 30 | Epoch Time: 6.85s\n",
+      "\tTrain Loss: 0.694 | Train Acc: 53.91%\n",
+      "\t Val. Loss: 0.690 |  Val. Acc: 54.01%\n",
+      "Epoch: 31 | Epoch Time: 6.79s\n",
+      "\tTrain Loss: 0.694 | Train Acc: 52.72%\n",
+      "\t Val. Loss: 0.693 |  Val. Acc: 51.09%\n"
+=======
+      "Epoch: 01 | Epoch Time: 6.54s\n",
+      "\tTrain Loss: 0.710 | Train Acc: 47.64%\n",
+      "\t Val. Loss: 0.698 |  Val. Acc: 50.36%\n",
+      "Epoch: 02 | Epoch Time: 6.83s\n",
+      "\tTrain Loss: 0.702 | Train Acc: 51.95%\n",
+      "\t Val. Loss: 0.697 |  Val. Acc: 50.36%\n",
+      "Epoch: 03 | Epoch Time: 6.54s\n",
+      "\tTrain Loss: 0.704 | Train Acc: 50.24%\n",
+      "\t Val. Loss: 0.694 |  Val. Acc: 48.91%\n",
+      "Epoch: 04 | Epoch Time: 6.55s\n",
+      "\tTrain Loss: 0.702 | Train Acc: 50.57%\n",
+      "\t Val. Loss: 0.694 |  Val. Acc: 50.36%\n",
+      "Epoch: 05 | Epoch Time: 6.55s\n",
+      "\tTrain Loss: 0.700 | Train Acc: 50.98%\n",
+      "\t Val. Loss: 0.701 |  Val. Acc: 50.36%\n",
+      "Epoch: 06 | Epoch Time: 6.55s\n",
+      "\tTrain Loss: 0.702 | Train Acc: 48.62%\n",
+      "\t Val. Loss: 0.699 |  Val. Acc: 49.64%\n",
+      "Epoch: 07 | Epoch Time: 6.53s\n",
+      "\tTrain Loss: 0.700 | Train Acc: 49.59%\n",
+      "\t Val. Loss: 0.717 |  Val. Acc: 49.64%\n",
+      "Epoch: 08 | Epoch Time: 6.54s\n",
+      "\tTrain Loss: 0.700 | Train Acc: 48.21%\n",
+      "\t Val. Loss: 0.698 |  Val. Acc: 49.64%\n",
+      "Epoch: 09 | Epoch Time: 6.56s\n",
+      "\tTrain Loss: 0.696 | Train Acc: 50.24%\n",
+      "\t Val. Loss: 0.737 |  Val. Acc: 50.36%\n",
+      "Epoch: 10 | Epoch Time: 6.67s\n",
+      "\tTrain Loss: 0.700 | Train Acc: 49.19%\n",
+      "\t Val. Loss: 0.695 |  Val. Acc: 49.64%\n"
+>>>>>>> 44f4fef... Big optimizations to varelim code
+     ],
+     "output_type": "stream"
+    }
+   ],
+   "source": [
+    "trainer = ModelTools(model, optimizer, criterion, device)\n",
+<<<<<<< HEAD
+    "trainer.train(train, test, N_EPOCHS=100)"
+=======
+    "trainer.train(train, test, N_EPOCHS=10, )"
+>>>>>>> 44f4fef... Big optimizations to varelim code
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": true
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+<<<<<<< HEAD
+   "execution_count": null,
+   "outputs": [],
+   "source": [
+    "y_pred = ModelTools(model, optimizer, criterion, device).predict(test).detach().cpu().numpy()\n",
+    "y_true = np.array([1 if i[0] == 1 else 2 for i in test.dataset.labels])"
+=======
+   "execution_count": 13,
+   "outputs": [
+    {
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mTypeError\u001b[0m                                 Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-13-8b6d38265755>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m      1\u001b[0m \u001b[0mmodel\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mRNN\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mlen\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mwordDict\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;34m+\u001b[0m \u001b[0;36m1\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmaxLength\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m30\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m2\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m3\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mto\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mdevice\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      2\u001b[0m \u001b[0mmodel\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mload_state_dict\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mtorch\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mload\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m'best_model.h2'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 3\u001b[0;31m \u001b[0my_pred\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mModelTools\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmodel\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0moptimizer\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mcriterion\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mdevice\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mpredict\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mtest\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnumpy\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      4\u001b[0m \u001b[0my_true\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mnp\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0marray\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;36m1\u001b[0m \u001b[0;32mif\u001b[0m \u001b[0mi\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;36m0\u001b[0m\u001b[0;34m]\u001b[0m \u001b[0;34m==\u001b[0m \u001b[0;36m1\u001b[0m \u001b[0;32melse\u001b[0m \u001b[0;36m2\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0mi\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mtest\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdataset\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mlabels\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mTypeError\u001b[0m: can't convert CUDA tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first."
+     ],
+     "ename": "TypeError",
+     "evalue": "can't convert CUDA tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.",
+     "output_type": "error"
+    }
+>>>>>>> 44f4fef... Big optimizations to varelim code
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": true
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "outputs": [],
+   "source": [
+<<<<<<< HEAD
+    "reportPerformance(y_pred, y_true, \"Model performance\")\n"
+=======
+    "model = RNN(len(wordDict) + 1, maxLength, 30, 2, 1).to(device)\n",
+    "model.load_state_dict(torch.load('best_model.h2'))\n",
+    "y_pred = ModelTools(model, optimizer, criterion, device).predict(test).numpy()\n",
+    "y_true = np.array([1 if i[0] == 1 else 2 for i in test.dataset.labels])"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": false
+    }
+   }
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "outputs": [
+    {
+     "data": {
+      "text/plain": "array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,\n       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,\n       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,\n       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,\n       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,\n       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,\n       1, 1, 1, 1, 1])"
+     },
+     "metadata": {},
+     "output_type": "execute_result",
+     "execution_count": 12
+    }
+>>>>>>> 44f4fef... Big optimizations to varelim code
+   ],
+   "source": [],
+   "metadata": {
+    "collapsed": false,
+    "pycharm": {
+     "name": "#%%\n",
+     "is_executing": true
+    }
+   }
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.6"
+  },
+  "pycharm": {
+   "stem_cell": {
+    "cell_type": "raw",
+    "source": [],
+    "metadata": {
+     "collapsed": false
+    }
+   }
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}

@@ -67,14 +67,19 @@ class Factor(object):
         x2i = np.ndarray.flatten(np.array([np.argwhere(clique == i) for i in F2.cliqueScope])).astype(np.int64)
         vn = np.product(self.card[clique])
         F3 = Factor(clique, np.full(vn, 0.0), self.card)
+        print(log(F1.functionTable), log(F2.functionTable))
+        print(clique)
         for i in range(vn):
             assign = np.array(F3.getAssignments(i))
             x1 = F1.functionTable[F1.getIndex(assign[x1i])]
             x2 = F2.functionTable[F2.getIndex(assign[x2i])]
+            print(log(x1 * x2))
             F3.functionTable[i] = threshold(x1 * x2)
+        print([log(f) for f in F3.functionTable])
         return F3
 
     def sumVariable(self, v):
+        print('sum out')
         X = self.cliqueScope
         F = self.functionTable
         S = self.stride
@@ -277,3 +282,6 @@ class GraphicalModel:
                     data = None if i == self.cliques - 1 else s.pop(0)
         self.factors = [Factor(cliqueScopes[i], functionTables[i], card) for i in range(self.cliques)]
         self.card = card
+
+network = GraphicalModel("1")
+print(network.sumOut())
