@@ -34,7 +34,10 @@ class Factor:
         self.cliqueScope = np.array(cliqueScope)
         self.card = card
         self.stride = self.getStride(cliqueScope)
-        self.functionTable = functionTable
+        if functionTable is None:
+            self.functionTable = np.full(int(np.product([card[var] for var in cliqueScope])), 0)
+        else:
+            self.functionTable = functionTable
 
     def getIndex(self, assignment: np.array):
         if len(assignment) == 0:
@@ -128,14 +131,22 @@ class Network:
     varN = 0
     cliques = 0
     evidence = {}
-    minDegreeOrder = []
     factors = []
     card = {}
 
     def __init__(self, file_name, ignore_factors=False):
-        self.parseUAI(file_name + ".uai", ignore_factors=ignore_factors)
-        if path.exists(file_name + ".uai.evid"):
-            self.parseUAIEvidence(file_name + ".uai.evid")
+        if file_name is not None:
+            self.parseUAI(file_name + ".uai", ignore_factors=ignore_factors)
+            if path.exists(file_name + ".uai.evid"):
+                self.parseUAIEvidence(file_name + ".uai.evid")
+
+    def create_network(self, networkType, varN, cliques, factors, card):
+        self.networkType = networkType
+        self.varN = varN
+        self.cliques = cliques
+        self.factors = factors
+        self.card = card
+        return self
 
     def parseUAIEvidence(self, evidenceFile: str):
         s = [t for t in open(evidenceFile, "r").read().split(' ') if t]
@@ -164,7 +175,7 @@ class Network:
                     cs = s.pop(0)
                     cliqueScopes += [[int(d) for d in cs.split(' ') if d][1:]]
 
-            if data.isdigit():
+            if data.isdigit() and not ignore_factors:
                 for i in range(self.cliques):
                     entriesN = int(data)
                     entries = []
@@ -179,8 +190,7 @@ class Network:
             self.factors = [Factor(cliqueScopes[i], functionTables[i], {var: card[var] for var in cliqueScopes[i]})
                             for i in range(self.cliques)]
         else:
-            self.factors = [Factor(cliqueScopes[i], np.full(len(functionTables[i]), Log_Double()), {var: card[var] for var in cliqueScopes[i]})
-                            for i in range(self.cliques)]
+            self.factors = [Factor(cliqueScopes[i], None, {var: card[var] for var in cliqueScopes[i]}) for i in range(self.cliques)]
         self.card = card
         self.cliqueScopes = cliqueScopes
 

@@ -2,8 +2,8 @@ import numpy as np
 from varElim import GraphicalModel, Network, Factor
 import sys
 from logdouble import Log_Double
-from random import uniform, seed
-from multiprocessing import Pool
+from random import uniform, shuffle, seed
+from multiprocessing.pool import ThreadPool as Pool
 
 dir = './hw5-data/'
 
@@ -33,22 +33,25 @@ def update_progress(progress):
     sys.stdout.flush()
 
 
+# Need to speed up this operation a lot
 def split_data(data, num_splits):
     n = len(data)
-    splitted_data = []
     shift = n // num_splits
-    for i in range(num_splits):
-        splitted_data.append(data[i * shift:i * shift + shift])
+    splitted_data = [data[i * shift:i * shift + shift] for i in range(num_splits)]
     if n % num_splits != 0:
         splitted_data.append(data[num_splits * shift:num_splits * shift + n % num_splits])
     return splitted_data
 
 
-def compute_likelihood(completions, network):
+def compute_likelihoods(completions, pgm):
     ll = []
     for completion in completions:
-        ll.append(network.getLikelihood(evidence={var: d for var, d in enumerate(completion)}))
+        ll.append(pgm.getLikelihood(evidence={var: d for var, d in enumerate(completion)}))
     return ll
+
+
+def compute_likelihood(completion, pgm):
+    return pgm.getLikelihood(evidence={var: d for var, d in enumerate(completion)})
 
 
 class BigFloat:
@@ -109,17 +112,16 @@ class Data_Extractor:
 
 
 class Learner:
-    def __init__(self, file_name, train, verbose=True, ignore_factors=True, num_processes=1):
+    def __init__(self, file_name, verbose=True, ignore_factors=True, num_processes=1):
         self.file_name = file_name
         self.network = Network(file_name, ignore_factors=ignore_factors)
-        self.train = train
         self.verbose = verbose
         self.num_processes = num_processes
 
     def get_network(self):
         return self.network
 
-    def learn_parameters(self):
+    def learn_parameters(self, train):
         pass
 
     def test_network_fully_observed(self, test):
@@ -128,9 +130,10 @@ class Learner:
             update_progress(0)
         network = GraphicalModel(self.network)
         ll = []
-        for i,data_set in enumerate(split_data(test, 10)):
+        for i, data_set in enumerate(split_data(test, 10)):
             p = Pool(self.num_processes)
-            ll_set = p.starmap(compute_likelihood, [(data, network) for data in split_data(data_set, self.num_processes)])
+            ll_set = p.starmap(compute_likelihoods,
+                               [(data, network) for data in split_data(data_set, self.num_processes)])
             ll_set = [likelihood for L in ll_set for likelihood in L]
             for likelihood in ll_set:
                 ll.append(likelihood)
@@ -142,13 +145,13 @@ class Learner:
 
 
 class Trained_Learn(Learner):
-    def __init__(self, file_name, train=None, verbose=True, num_processes=1):
-        Learner.__init__(self, file_name, train, verbose, ignore_factors=False, num_processes=num_processes)
+    def __init__(self, file_name, verbose=True, num_processes=1):
+        Learner.__init__(self, file_name, verbose, ignore_factors=False, num_processes=num_processes)
 
     def get_network(self):
         return Learner.get_network(self)
 
-    def learn_parameters(self):
+    def learn_parameters(self, train):
         print('Parameters already learned in pre-trained model')
         pass
 
@@ -157,10 +160,10 @@ class Trained_Learn(Learner):
 
 
 class FOD_Learn(Learner):
-    def __init__(self, file_name, train, verbose=True, num_processes=1):
-        Learner.__init__(self, file_name, train, verbose, ignore_factors=False, num_processes=num_processes)
+    def __init__(self, file_name, verbose=True, num_processes=1):
+        Learner.__init__(self, file_name, verbose, ignore_factors=True, num_processes=num_processes)
 
-    def learn_parameters(self):
+    def learn_parameters(self, train):
         if self.verbose:
             print('Learning parameters on file ' + self.file_name + ' using MLE approach.')
             update_progress(0)
@@ -174,9 +177,9 @@ class FOD_Learn(Learner):
                 assignments = f.getAssignments(j)
                 d = {var: assignments[i] for i, var in enumerate(cs)}
                 smooth = f.card[child]
-                assignment_count = self.train.get_assignment_count(d) + 1
+                assignment_count = train.get_assignment_count(d) + 1
                 del (d[child])
-                total_count = self.train.get_assignment_count(d) + smooth
+                total_count = train.get_assignment_count(d) + smooth
                 f.functionTable[j] = Log_Double(assignment_count / total_count)
             self.network.factors[i].functionTable = f.functionTable
             if self.verbose:
@@ -191,14 +194,25 @@ class FOD_Learn(Learner):
         return Learner.test_network_fully_observed(self, test)
 
 
-class POD_EM_Learn(Learner):
-    def __init__(self, file_name, train, verbose=True, stabilizer=Log_Double(1e-100), dropout=None, num_processes=1):
+class EM_Learn(Learner):
+    def __init__(self, file_name=None, verbose=True, stabilizer=Log_Double(1e-100), dropout=None, num_processes=1,
+                 network=None):
+        if file_name is None and network is None:
+            print('Error: No way to initialize network')
         stabilizer = Log_Double(stabilizer)
-        Learner.__init__(self, file_name, train, verbose, ignore_factors=True,num_processes=num_processes)
+        if network is None:
+            Learner.__init__(self, file_name, verbose, ignore_factors=True, num_processes=num_processes)
+        else:
+            Learner.__init__(self, file_name=None, verbose=verbose,
+                             ignore_factors=True, num_processes=num_processes)
+            self.network = network
         self.stabilizer = stabilizer
-        self.dropout = Log_Double(dropout)
+        if dropout is not None:
+            self.dropout = Log_Double(dropout)
+        self.dropout = None
         self.verbose = verbose
         self.num_processes = num_processes
+        self.pgm = GraphicalModel(self.network)
 
     def get_network(self):
         return Learner.get_network(self)
@@ -208,19 +222,34 @@ class POD_EM_Learn(Learner):
         if counts is None:
             counts = np.full(n, 1)
         M = [np.full(len(f.functionTable), Log_Double()) for f in self.network.factors]
-        p = Pool(self.num_processes)
-        network = GraphicalModel(self.network)
-        likelihood = p.starmap(compute_likelihood,
-                               [(data, network) for data in split_data(completions, self.num_processes)])
-        likelihood = [l for L in likelihood for l in L]
+        likelihoods = self.get_likelihoods(completions)
+        total = Log_Double()
         for i in range(n):
-            if self.dropout is not None and likelihood[i] > self.dropout:
-                continue
-            for m in range(len(M)):
-                assignment = completions[i][self.network.factors[m].cliqueScope]
-                index = self.network.factors[m].getIndex(assignment)
-                M[m][index] += Log_Double(counts[i]) * likelihood[i]
+            for j in range(len(completions[i])):
+                total += likelihoods[i][j]
+                if self.dropout is not None:
+                    if self.dropout < likelihoods[i][j]:
+                        continue
+                for m in range(len(M)):
+                    assignment = completions[i][j][self.network.factors[m].cliqueScope]
+                    index = self.network.factors[m].getIndex(assignment)
+                    M[m][index] += Log_Double(counts[i][j]) * likelihoods[i][j]
         return M
+
+    def compute_likelihoods(self, data):
+        ll = []
+        for completion in data:
+            ll.append(self.pgm.getLikelihood(evidence={var: d for var, d in enumerate(completion)}))
+        return ll
+
+    def compute_likelihood(self, data):
+        return self.pgm.getLikelihood(evidence={var: d for var, d in enumerate(data)})
+
+    def get_likelihoods(self, completions):
+        p = Pool(self.num_processes)
+        likelihoods = p.map(self.compute_likelihoods, completions)
+        p.terminate()
+        return likelihoods
 
     def generate_all_data_completions(self, data):
         l = []
@@ -257,24 +286,30 @@ class POD_EM_Learn(Learner):
             child_card = f.card[f.cliqueScope[-1]]
             for j in range(len(f.functionTable) // child_card):
                 total_sum = sum([M[i][child_card * j + k] for k in range(child_card)])
-                if total_sum.is_zero:
-                    for k in range(child_card):
-                        M[i][child_card * j + k] = f.functionTable[child_card * j + k]
-                else:
-                    for k in range(child_card):
-                        M[i][child_card * j + k] = M[i][child_card * j + k] / total_sum
+                for k in range(child_card):
+                    M[i][child_card * j + k] = (M[i][child_card * j + k] / total_sum) + self.stabilizer
+                total_sum = sum([M[i][child_card * j + k] for k in range(child_card)])
+                for k in range(child_card):
+                    M[i][child_card * j + k] = (M[i][child_card * j + k] / total_sum)
         return M
 
-    def learn_parameters(self, num_iterations=20):
+
+class POD_EM_Learn(EM_Learn):
+    def __init__(self, file_name, verbose=True, stabilizer=Log_Double(1e-100), dropout=None, num_processes=1):
+        EM_Learn.__init__(self, file_name, verbose, stabilizer, dropout, num_processes)
+
+    def learn_parameters(self, train, num_iterations=20):
         self.set_parameters(self.random_gen_parameters())
+        self.pgm = GraphicalModel(self.network)
         if self.verbose:
             print('Running EM algorithm to determine parameters for PGM in ' + self.file_name)
             update_progress(0)
-        completions, counts = self.generate_all_data_completions(self.train)
+        completions, counts = self.generate_all_data_completions(train)
+        completions = split_data(completions, self.num_processes)
+        counts = split_data(counts, self.num_processes)
         for t in range(num_iterations):
             # E-step
             M = self.normalize_network(self.compute_ess(completions, counts))
-            M = self.normalize_network([[self.stabilize(lik) for lik in F] for F in M])
             # M-step
             self.set_parameters(M)
             if self.verbose:
@@ -284,13 +319,56 @@ class POD_EM_Learn(Learner):
             print()
 
 
-seed(123)
+class Mixture_Random_Bayes_Learn(EM_Learn):
+    def __init__(self, train, verbose=True, stabilizer=Log_Double(1e-100), dropout=None, num_processes=1, k=2):
+        Learner.__init__(self, file_name=None, verbose=verbose, ignore_factors=True,
+                         num_processes=num_processes)
+        stabilizer = Log_Double(stabilizer)
+        self.stabilizer = stabilizer
+        self.verbose = verbose
+        self.networks = self.generate_k_dags(len(train[0]), k)
+        self.learners = EM_Learn()
+
+    def generate_k_dags(self, variable_count, k):
+        networkType = "BAYES"
+        n = variable_count
+        varN = n
+        cliques = n
+        card = {var: 2 for var in range(n)}
+        networks = np.array([Network(file_name=None).create_network(networkType, varN, cliques, [], card)
+                             for _ in range(k)])
+        for i in range(k):
+            nodes = list(range(n))
+            processed_nodes = []
+            shuffle(nodes)
+            root = nodes.pop()
+            new_factors = [Factor([root], np.full(card[root], 0), {root: card[root]})]
+            processed_nodes.append(root)
+            while len(nodes) != 0:
+                node = nodes.pop()
+                num_parents = int(uniform(0, 4)) % len(processed_nodes)
+                parents = []
+                for _ in range(num_parents):
+                    parents.append(processed_nodes[int(uniform(0, len(processed_nodes)))])
+                cliqueScope = parents + [node]
+                new_card = {var: card[var] for var in cliqueScope}
+                new_factors.append(Factor(cliqueScope,
+                                          np.full(int(np.product([new_card[var] for var in cliqueScope])), 0),
+                                          new_card))
+                processed_nodes.append(node)
+            networks[i].factors = new_factors
+        return networks
+
+    def learn_parameters(self, train):
+        completions, counts = self.generate_all_data_completions(train)
+
+
 dataset_path = dir + 'dataset2/'
-train_data = Data_Extractor(dataset_path + 'train-p-4.txt').get_data()
-test_data = Data_Extractor(dataset_path + 'test.txt').get_data()
+train_data = Data_Extractor(dataset_path + 'train-p-2.txt').get_data()
+test_data = Data_Extractor(dataset_path + 'test.txt').get_data()[0:100]
 b = Trained_Learn(dataset_path + '2', num_processes=8)
-d = POD_EM_Learn(dataset_path + '2', train_data, stabilizer=1e-2, verbose=True, dropout=1e-10, num_processes=8)
-d.learn_parameters(num_iterations=10)
+d = POD_EM_Learn(dataset_path + '2', num_processes=8, dropout=None, stabilizer=1e-5)
+d.learn_parameters(train_data, num_iterations=20)
 pretrained_likelihoods = b.test_network_fully_observed(test_data)
 trained_likelihoods = d.test_network_fully_observed(test_data)
 print(log_difference(pretrained_likelihoods, trained_likelihoods) / len(test_data))
