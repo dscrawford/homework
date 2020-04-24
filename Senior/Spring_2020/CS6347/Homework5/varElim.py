@@ -35,7 +35,7 @@ class Factor:
         self.card = card
         self.stride = self.getStride(cliqueScope)
         if functionTable is None:
-            self.functionTable = np.full(int(np.product([card[var] for var in cliqueScope])), 0)
+            self.functionTable = np.full(int(np.product([card[var] for var in cliqueScope])), Log_Double())
         else:
             self.functionTable = functionTable
 
@@ -114,7 +114,7 @@ class Factor:
         new_card = self.card.copy()
         for vari in evid_i:
             del(new_card[self.cliqueScope[vari]])
-        newFactor = Factor(new_clique_scope, np.full(new_n, Log_Double()), new_card)
+        newFactor = Factor(new_clique_scope, None, new_card)
         assign = np.full(len(self.cliqueScope), 0)
         assign[evid_i] = [evidence[self.cliqueScope[i]] for i in evid_i]
         for i in range(new_n):
@@ -145,7 +145,7 @@ class Network:
         self.varN = varN
         self.cliques = cliques
         self.factors = factors
-        self.card = card
+        self.card = card.copy()
         return self
 
     def parseUAIEvidence(self, evidenceFile: str):
