@@ -1,0 +1,23 @@
+PASSIVE AGGRESSIVE CLASSIFIER RESULTS: 
+              precision    recall  f1-score   support
+
+       B-LOC       0.80      0.69      0.74      1668
+      B-MISC       0.66      0.57      0.61       702
+       B-ORG       0.56      0.58      0.57      1661
+       B-PER       0.81      0.45      0.58      1617
+       I-LOC       0.67      0.33      0.44       257
+      I-MISC       0.56      0.39      0.46       216
+       I-ORG       0.51      0.34      0.41       835
+       I-PER       0.52      0.20      0.29      1156
+           O       0.93      0.98      0.96     38323
+
+   micro avg       0.90      0.90      0.90     46435
+   macro avg       0.67      0.50      0.56     46435
+weighted avg       0.88      0.90      0.88     46435
+
+Accuracy:  89.60%
+Throughput:  484721.41 KB/s
+Inference time:  0.002620 seconds
+
+
+
