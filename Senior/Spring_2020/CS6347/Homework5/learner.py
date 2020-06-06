@@ -32,6 +32,8 @@ def update_progress(progress):
 # Need to speed up this operation a lot
 def split_data(data, num_splits):
     n = len(data)
+    if num_splits > n:
+        num_splits = len(data)
     shift = n // num_splits
     splitted_data = [data[i * shift:i * shift + shift] for i in range(num_splits)]
     if n % num_splits != 0:
@@ -40,12 +42,20 @@ def split_data(data, num_splits):
 
 
 class Learner:
-    def __init__(self, file_name, verbose=True, ignore_factors=True, num_processes=1):
-        self.file_name = file_name
+    def __init__(self, file_name, verbose=True, ignore_factors=True, num_processes=1, network=None):
+        if file_name is None and network is None:
+            print('Error: No way to initialize network')
         if file_name is not None:
             self.network = Network(file_name, ignore_factors=ignore_factors)
             self.pgm = GraphicalModel(self.network)
             self.card = self.network.card
+            self.file_name = file_name
+        if network is not None:
+            self.network = network
+            self.pgm = GraphicalModel(self.network)
+            self.card = self.network.card
+            self.file_name = "Generated structure"
+
         self.verbose = verbose
         self.num_processes = num_processes
 
@@ -78,16 +88,16 @@ class Learner:
     def test_network_fully_observed(self, test):
         if self.verbose:
             print('Computing model predictions using network structure from ' + self.file_name)
-            update_progress(0)
-        ll = []
-        for i, data_set in enumerate(split_data(test, 10)):
-            ll_set = self.get_likelihoods(data_set)
-            ll = ll + ll_set
-            if self.verbose:
-                update_progress((i + 1) / 10)
-        if self.verbose:
-            print()
-        return np.array(ll)
+            # update_progress(0)
+        # ll = []
+        # for i, data_set in enumerate(split_data(test, 10)):
+        #     ll_set = self.get_likelihoods(data_set)
+        #     ll = ll + ll_set
+        #     if self.verbose:
+        #         update_progress((i + 1) / 10)
+        # if self.verbose:
+        #     print()
+        return np.array(self.get_likelihoods(test))
 
 
 class Trained_Learn(Learner):

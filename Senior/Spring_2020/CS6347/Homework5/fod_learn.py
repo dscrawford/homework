@@ -4,8 +4,8 @@ from varElim import GraphicalModel
 from logdouble import Log_Double
 
 class FOD_Learn(Learner):
-    def __init__(self, file_name, verbose=True, num_processes=1):
-        Learner.__init__(self, file_name, verbose, ignore_factors=True, num_processes=num_processes)
+    def __init__(self, file_name, verbose=True, num_processes=1, network=None):
+        Learner.__init__(self, file_name, verbose, ignore_factors=True, num_processes=num_processes,network=network)
 
     def learn_parameters(self, train):
         if self.verbose:
@@ -17,10 +17,10 @@ class FOD_Learn(Learner):
             child = cs[-1]
             n = np.product([f.card[c] for c in f.cliqueScope])
             f.functionTable = np.full(n, Log_Double())
+            smooth = f.card[child]
             for j in range(n):
                 assignments = f.getAssignments(j)
                 d = {var: assignments[i] for i, var in enumerate(cs)}
-                smooth = f.card[child]
                 assignment_count = train.get_assignment_count(d) + 1
                 del (d[child])
                 total_count = train.get_assignment_count(d) + smooth

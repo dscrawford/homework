@@ -1,11 +1,15 @@
 import numpy as np
-from learner import Learner, update_progress
+from learner import Learner, update_progress, split_data
+from fod_learn import FOD_Learn
 from logdouble import Log_Double
 from varElim import GraphicalModel, Network, Factor
 from random import uniform, shuffle, sample
+from multiprocessing import Pool
+from time import time
+
 
 class EM_Learn(Learner):
-    def __init__(self, file_name=None, verbose=True, stabilizer=Log_Double(1e-100), dropout=None, num_processes=1,
+    def __init__(self, file_name=None, verbose=True, stabilizer=Log_Double(1e-100), num_processes=1,
                  network=None):
         if file_name is None and network is None:
             print('Error: No way to initialize network')
@@ -13,16 +17,9 @@ class EM_Learn(Learner):
         if network is None:
             Learner.__init__(self, file_name, verbose, ignore_factors=True, num_processes=num_processes)
         else:
-            self.network = network
-            self.card = self.network.card
             Learner.__init__(self, file_name=None, verbose=verbose,
-                             ignore_factors=True, num_processes=num_processes)
-
+                             ignore_factors=True, num_processes=num_processes, network=network)
         self.stabilizer = stabilizer
-        if dropout is not None:
-            self.dropout = Log_Double(dropout)
-        else:
-            self.dropout = None
         self.verbose = verbose
         self.num_processes = num_processes
         self.pgm = GraphicalModel(self.network)
@@ -35,19 +32,14 @@ class EM_Learn(Learner):
         if counts is None:
             counts = np.full(n, 1)
         M = [np.full(len(f.functionTable), Log_Double()) for f in self.network.factors]
-        likelihoods = self.get_likelihoods(completions)
-        total = Log_Double()
-        total_count = 0
+        likelihoods = self.get_all_normalized_weights(completions)
         for i in range(n):
-            total += likelihoods[i]
-            total_count += 1
-            if self.dropout is not None and self.dropout < likelihoods[i]:
-                continue
-            for m in range(len(M)):
-                assignment = completions[i][self.network.factors[m].cliqueScope]
-                index = self.network.factors[m].getIndex(assignment)
-                M[m][index] += Log_Double(counts[i]) * likelihoods[i]
-        return M, total
+            for j in range(len(completions[i])):
+                for m in range(len(M)):
+                    assignment = completions[i][j][self.network.factors[m].cliqueScope]
+                    index = self.network.factors[m].getIndex(assignment)
+                    M[m][index] += likelihoods[i][j] * Log_Double(counts[i])
+        return M
 
     def compute_likelihoods(self, data):
         ll = []
@@ -58,20 +50,34 @@ class EM_Learn(Learner):
     def compute_likelihood(self, data):
         return self.pgm.getLikelihood(evidence={var: d for var, d in enumerate(data)})
 
+    def get_normalized_weights(self, data_segment):
+        ll = self.compute_likelihoods(data_segment)
+        total_sum = sum(ll)
+        return [l / total_sum for l in ll]
+
+    def get_all_normalized_weights(self, data):
+        p = Pool(self.num_processes)
+        self.get_normalized_weights(data[0])
+        weights = p.map(self.get_normalized_weights, data)
+        p.terminate()
+        return weights
+
     def generate_all_data_completions(self, data):
         l = []
-        for row in data:
+        reduced_data, counts = np.unique(data.data, return_counts=True, axis=0)
+        for row in reduced_data:
             r = row.copy()
             unknown_var_i = []
             for i in range(len(row)):
                 if r[i] == -1:
                     unknown_var_i.append(i)
             completion_generator = Factor(unknown_var_i, None, {i: self.card[i] for i in unknown_var_i})
+            new_l = []
             for i in range(completion_generator.getSize()):
                 r[unknown_var_i] = completion_generator.getAssignments(i)
-                l.append(r.copy())
-        l = np.array(l)
-        return np.unique(l, return_counts=True, axis=0)
+                new_l.append(r.copy())
+            l.append(new_l)
+        return np.array(l), counts
 
     def random_gen_parameters(self):
         M = [np.array([Log_Double(uniform(0, 1)) for _ in range(len(f.functionTable))]) for f in self.network.factors]
@@ -89,21 +95,17 @@ class EM_Learn(Learner):
             child_card = f.card[f.cliqueScope[-1]]
             for j in range(len(f.functionTable) // child_card):
                 total_sum = sum([M[i][child_card * j + k] for k in range(child_card)])
-                if total_sum.is_zero:
-                    for k in range(child_card):
-                        M[i][child_card * j + k] = f.functionTable[child_card * j + k]
-                else:
-                    for k in range(child_card):
-                        M[i][child_card * j + k] = M[i][child_card * j + k] / total_sum + self.stabilizer
-                    total_sum = sum([M[i][child_card * j + k] for k in range(child_card)])
-                    for k in range(child_card):
-                        M[i][child_card * j + k] = (M[i][child_card * j + k] / total_sum)
+                for k in range(child_card):
+                    M[i][child_card * j + k] = (M[i][child_card * j + k] / total_sum) + self.stabilizer
+                total_sum = sum([M[i][child_card * j + k] for k in range(child_card)])
+                for k in range(child_card):
+                    M[i][child_card * j + k] = (M[i][child_card * j + k] / total_sum)
         return M
 
 
 class POD_EM_Learn(EM_Learn):
-    def __init__(self, file_name, verbose=True, stabilizer=Log_Double(1e-5), dropout=None, num_processes=1):
-        EM_Learn.__init__(self, file_name, verbose, stabilizer, dropout, num_processes)
+    def __init__(self, file_name, verbose=True, stabilizer=Log_Double(1e-5), num_processes=1, network=None):
+        EM_Learn.__init__(self, file_name, verbose, stabilizer, num_processes, network)
 
     def learn_parameters(self, train, num_iterations=20):
         self.set_parameters(self.random_gen_parameters())
@@ -114,8 +116,7 @@ class POD_EM_Learn(EM_Learn):
         completions, counts = self.generate_all_data_completions(train)
         for t in range(num_iterations):
             # E-step
-            M, _ = self.compute_ess(completions, counts)
-            M = self.normalize_network(M)
+            M = self.normalize_network(self.compute_ess(completions, counts))
             # M-step
             self.set_parameters(M)
             if self.verbose:
@@ -125,21 +126,20 @@ class POD_EM_Learn(EM_Learn):
 
 
 class Mixture_Random_Bayes_Learn(EM_Learn):
-    def __init__(self, num_vars, verbose=True, stabilizer=Log_Double(1e-5), dropout=None, num_processes=1, k=2):
-        Learner.__init__(self, file_name=None, verbose=verbose, ignore_factors=True,
-                         num_processes=num_processes)
+    def __init__(self, num_vars, verbose=True, stabilizer=Log_Double(1e-5), num_processes=1, k=2):
+        self.num_processes = num_processes
         stabilizer = Log_Double(stabilizer)
         self.stabilizer = Log_Double(stabilizer)
         self.verbose = verbose
         self.card = {var: 2 for var in range(num_vars)}
         self.networks = self.generate_k_dags(num_vars, k)
-        self.learners = [EM_Learn(file_name=None, network=network, num_processes=num_processes, dropout=dropout,
-                                  verbose=False) for network in self.networks]
+        self.card[num_vars] = k
+        self.learners = [FOD_Learn(file_name=None, network=network, num_processes=num_processes,
+                                   verbose=False) for network in self.networks]
         self.k = k
         p = [uniform(0, 1) for ki in range(k)]
         self.p = self.normalize_p(p)
         self.file_name = 'randomly generated DAGs'
-
 
     def normalize_p(self, p):
         p_sum = Log_Double(sum(p))
@@ -182,21 +182,37 @@ class Mixture_Random_Bayes_Learn(EM_Learn):
     def compute_likelihoods(self, data):
         return [self.compute_likelihood(row) for row in data]
 
+    def get_p_normalized_weight(self, row):
+        weight = []
+        for i, learner in enumerate(self.learners):
+            weight.append(self.p[i] * learner.compute_likelihood(row[i]))
+        weight_sum = sum(weight)
+        return [w / weight_sum for w in weight]
+
+    def get_p_normalized_weights(self, data, counts):
+        p = Pool(self.num_processes)
+        weights = p.map(self.get_p_normalized_weight, data)
+        p.terminate()
+        weights = [[Log_Double(counts[i]) * weights[i][j] for j in range(len(weights[i]))] for i in range(len(counts))]
+        return weights
+
+    def set_parameters(self, weights):
+        p = [Log_Double() for _ in range(self.k)]
+        for i in range(self.k):
+            for j in range(len(weights)):
+                p[i] += weights[j][i]
+        self.p = self.normalize_p(p)
+
     def learn_parameters(self, train, num_iterations=20):
         if self.verbose:
             print('Training', self.k, 'randomly created DAGs with EM')
             update_progress(0)
-        completions, counts = self.generate_all_data_completions(train)
         for learner in self.learners:
-            learner.set_parameters(learner.random_gen_parameters())
+            learner.learn_parameters(train)
+        train = np.array([list(tr) + [-1] for tr in train])
+        completions, counts = self.generate_all_data_completions(train)
         for t in range(num_iterations):
-            learner_likelihoods = []
-            for learner in self.learners:
-                M, learner_likelihood = learner.compute_ess(completions, counts)
-                M = learner.normalize_network(M)
-                learner_likelihoods.append(learner_likelihood)
-                learner.set_parameters(M)
-            self.p = self.normalize_p([learner_likelihoods[i] for i in range(self.k)])
+            self.set_parameters(self.get_p_normalized_weights(completions, counts))
             if self.verbose:
                 update_progress((t + 1) / num_iterations)
         if self.verbose:

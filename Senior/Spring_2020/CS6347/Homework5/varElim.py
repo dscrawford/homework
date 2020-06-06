@@ -59,11 +59,13 @@ class Factor:
         return {self.cliqueScope[i]: assign[i] for i in range(len(self.cliqueScope))}
 
     def getStride(self, cliqueScope):
+        if len(cliqueScope) == 0:
+            return []
         prod = 1
-        a = []
-        for i in range(len(cliqueScope)):
-            a.append(prod)
+        a = [1]
+        for i in range(len(cliqueScope) - 1):
             prod = prod * self.card[cliqueScope[i]]
+            a.append(prod)
         return a
 
     def getSize(self):
@@ -328,3 +330,24 @@ class GraphicalModel:
             tree = [[c for c in cs if c != v] for cs in tree]
             X = X.union({v})
         return X
+
+    def schematic_bucket(self):
+        cliqueScopes = [f.cliqueScope for f in self.factors]
+        tree = []
+        print(cliqueScopes)
+        print(self.minDegreeOrder1)
+        for o in self.minDegreeOrder:
+            treeNode = [cs for cs in cliqueScopes if o in cs]
+            nodes = set()
+            for cs in treeNode:
+                for var in cs:
+                    nodes = nodes.union({var})
+            tree.append(list(nodes))
+            cliqueScopes = [cs for cs in cliqueScopes if o not in cs]
+            cliqueScopes.append(list(nodes - {o}))
+        print(tree)
+        return max([len(cluster) for cluster in tree])
+
+network = GraphicalModel(Network('test', ignore_factors=True))
+# network.minDegreeOrder = [0,1,2,5,8,7,6,3,4]
+print(network.schematic_bucket())
