@@ -1,3 +1,6 @@
+# Made by Daniel Crawford
+# Student Net ID: dsc160130
+# Course: CS6364 - Artificial Intelligence
 import datetime
 import json
 import os
@@ -92,11 +95,7 @@ def task9(file_name):
 
     for mdyh, subtweets in grouped_dates.items():
         f = open('./task9-output/' + mdyh + '.txt', 'w')
-        f.write('[' + '\n')
-        for tweet in subtweets:
-            del (tweet['shortened_date'])
-            f.write(json.dumps(tweet) + ',\n')
-        f.write(']')
+        json.dump(subtweets, f)
         f.close()
 
     print('Wrote out grouped tweets by Mon-Day-Year-Hour in task9-output')
@@ -114,17 +113,11 @@ def task10(file_name):
         print('Polarity: ', sent[0], ', Subjectivity: ', sent[1])
 
     f = open('positive-sentiment-tweets.txt', 'w')
-    f.write('[' + '\n')
-    for tweet in positive_tweets:
-        f.write(json.dumps(tweet) + ',\n')
-    f.write(']')
-    f.close()
+    json.dump(positive_tweets, f)
 
     f = open('negative-sentiment-tweets.txt', 'w')
-    f.write('[' + '\n')
-    for tweet in positive_tweets:
-        f.write(json.dumps(tweet) + ',\n')
-    f.write(']')
+    json.dump(negative_tweets, f)
+
     f.close()
 
     print('Wrote out positive and negative sentiment tweets in positive-sentiment-tweets.txt and '
