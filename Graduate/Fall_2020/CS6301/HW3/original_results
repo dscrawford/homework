@@ -1,0 +1,14 @@
+Accuracy of test set = 90.57
+
+Accuracy of plane    = 92.89
+Accuracy of car      = 94.89
+Accuracy of bird     = 86.09
+Accuracy of cat      = 81.64
+Accuracy of deer     = 91.30
+Accuracy of dog      = 84.45
+Accuracy of frog     = 93.80
+Accuracy of horse    = 93.08
+Accuracy of ship     = 94.78
+Accuracy of truck    = 92.80
+Ground truth =    cat  ship  ship plane  frog  frog   car  frog   cat   car plane truck   dog horse truck  ship   dog horse  ship  frog horse plane  deer truck   dog  bird  deer plane truck  frog  frog   dog
+Predicted    =    cat  ship  ship plane  frog  frog   car  frog   cat   car plane truck   dog horse truck  ship   dog horse  ship  frog horse plane  deer truck   cat  bird  deer plane truck  frog  frog   dog
