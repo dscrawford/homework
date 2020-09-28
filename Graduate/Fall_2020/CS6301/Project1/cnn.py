@@ -215,8 +215,7 @@ class Normalize(Layer):
         return super().forward(input / self.norm_constant)
 
     def backward(self, derivative):
-        # return derivative
-        return None
+        return derivative
 
 
 class Vectorizer(Layer):
@@ -228,8 +227,7 @@ class Vectorizer(Layer):
         return super().forward(np.reshape(input, self.output_dim))
 
     def backward(self, derivative):
-        # return np.reshape(derivative, self.input_dim)
-        return None
+        return np.reshape(derivative, self.input_dim)
 
 
 class MatrixMultiplication(WeightedLayer):
@@ -292,15 +290,74 @@ class SoftMax(Layer):
         return derivative
 
 
+class CNN2DConv(WeightedLayer):
+    def __init__(self, input_dim, output_dim, filter_dim, stride, init_method='uniform'):
+        super().__init__(input_dim, filter_dim, init_method)
+        self.filter_dim = filter_dim
+        self.stride = stride
+        self.output_dim = output_dim
+
+    def forward(self, input):
+        input = np.pad(input, [[0, 0], [1, 1], [1, 1]])
+        output = np.zeros(self.output_dim)
+        channels = self.filter_dim[0]
+        filter_x = self.filter_dim[1]
+        filter_y = self.filter_dim[2]
+        for i in range(len(input) * channels):
+                for j in range(self.output_dim[1] - filter_y):
+                    for k in range(self.output_dim[2] - filter_x):
+                        j_stride = j * self.stride
+                        k_stride = k * self.stride
+                        output[i][j][k] = np.sum(input[i // channels][j_stride:j_stride + filter_y, k_stride:k_stride + filter_x] * self.weights[i // len(input)])
+        return output
+
+    def backward(self, derivative):
+        return derivative
+
+
+class CNNMaxPool(Layer):
+    def __init__(self, input_dim, output_dim, filter_dim, stride):
+        super().__init__(input_dim)
+        self.filter_dim = filter_dim
+        self.stride = stride
+        self.output_dim = output_dim
+
+    def forward(self, input):
+        input = np.pad(input, [[0, 0], [1, 1], [1, 1]])
+        output = np.zeros(self.output_dim)
+        channels = self.filter_dim[0]
+        filter_x = self.filter_dim[1]
+        filter_y = self.filter_dim[2]
+
+        for i in range(len(input) * channels):
+                for j in range(self.output_dim[1]):
+                    for k in range(self.output_dim[2]):
+                        j_stride = j * self.stride
+                        k_stride = k * self.stride
+                        output[i][j][k] = np.max(input[i // channels][j_stride:j_stride + filter_y, k_stride:k_stride + filter_x])
+        return output
+
+    def backward(self, derivative):
+        return derivative
+
+
 class Model:
     def __init__(self, init_method='uniform'):
         self.layers = [
             Normalize((28, 28), 255.0),
-            Vectorizer((28, 28)),
-            MatrixMultiplication((1, 28 ** 2), (1, 1000), init_method=init_method),
-            Addition((1, 1000), init_method=init_method),
+            CNN2DConv((28, 28), (16, 28, 28), (16, 3, 3), 1, init_method=init_method),
+            Addition((16, 28, 28), init_method=init_method),
             ReLU(),
-            MatrixMultiplication((1, 1000), (1, 100), init_method=init_method),
+            CNNMaxPool((16, 28, 28), (16, 14, 14), (1, 3, 3), 2),
+            CNN2DConv((16, 14, 14), (32, 14, 14), (2, 3, 3), 1, init_method=init_method),
+            Addition((32, 14, 14), init_method=init_method),
+            ReLU(),
+            CNNMaxPool((32, 14, 14), (32, 7, 7), (1, 3, 3), 2),
+            CNN2DConv((32, 7, 7), (64, 7, 7), (1, 3, 3), 1, init_method=init_method),
+            Addition((64, 7, 7), init_method=init_method),
+            ReLU(),
+            Vectorizer((64, 7, 7)),
+            MatrixMultiplication((1, 64 * 7 * 7), (1, 100), init_method=init_method),
             Addition((1, 100), init_method=init_method),
             ReLU(),
             MatrixMultiplication((1, 100), (1, 10), init_method=init_method),
@@ -313,27 +370,28 @@ class Model:
         output = input
         for layer in self.layers:
             output = layer.forward(output)
-        return output[0]
+        return output
 
     def backward(self, back):
         for layer in reversed(self.layers):
             back = layer.backward(back)
-
 
     def update(self, lr):
         for layer in self.layers:
             layer.update(lr)
 
 
-model = Model(init_method='uniform')
 
 
 t = time()
+model = Model(init_method='uniform')
+print(model.forward(train_data[0])[0])
+print(time() - t)
+from sys import exit
 
-train_data = train_data[0:1000]
-train_labels = train_labels[0:1000]
-test_data = train_data[0:1000]
-test_labels = test_labels[0:1000]
+
+exit(0)
+
 train_loss = []
 for epoch in range(10):
     print('EPOCH ', epoch)
@@ -365,7 +423,6 @@ for d, label in zip(test_data, test_labels):
 
 accuracy = num_correct / len(test_data)
 
-
 # cycle through the training data
 # forward pass
 # loss
@@ -389,7 +446,7 @@ print('Test Accuracy: ', num_correct / len(test_data))
 # final value
 print('Test Loss: ', num_correct / len(test_data))
 # plot of accuracy vs epoch
-plt.plot(list(range(0,10)), train_loss)
+plt.plot(list(range(0, 10)), train_loss)
 plt.xlabel('EPOCH')
 plt.ylabel('Cross Entropy Loss')
 plt.title('Neural Network Performance Chart')

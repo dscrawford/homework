@@ -270,7 +270,7 @@ def q2(train_file):
     model.train(XTrain, yTrain, epochs=1000)
     reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
     print('-------------------------------')
-
+q
 
 q1(HOUSING_DATA_FILE)
 q2(TITANIC_DATA_FILE)
