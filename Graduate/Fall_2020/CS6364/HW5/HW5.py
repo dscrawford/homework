@@ -5,6 +5,7 @@
 import numpy as np
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pandas import read_csv, get_dummies
 
 dir = './'
@@ -18,13 +19,35 @@ LEARNING_RATE = 0.00001
 def mse(true, pred, n):
     return np.sum((true - pred) ** 2)
 
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
 def rmse(true, pred):
     return np.sqrt(((true - pred) ** 2).mean())
 
 
 def rmse_derivative(true, pred, input_column, n):
-    return -1 * np.sum((true - pred) * input_column) / (n * rmse(true, pred))
+    num = -1 * np.sum((true - pred) * input_column)
+    den = (n * rmse(true, pred))
+    if den == 0:
+        return 0
+    return num / den
+
+def reportClassifierPerformance(y_train_true, y_train_pred, y_test_true, y_test_pred, name=''):
+    row_format = "{:>25}" * 3
+    num_decimals = 2
+    scores = [[accuracy_score(y_train_true, y_train_pred) * 100, accuracy_score(y_test_true, y_test_pred) * 100],
+              [precision_score(y_train_true, y_train_pred) * 100, precision_score(y_test_true, y_test_pred) * 100],
+              [recall_score(y_train_true, y_train_pred) * 100, recall_score(y_test_true, y_test_pred) * 100],
+              [f1_score(y_train_true, y_train_pred) * 100, f1_score(y_test_true, y_test_pred) * 100]]
+    metric = ['Accuracy', 'Precision', 'Recall', 'F1 Score']
+    print(row_format.format('', *['Train', 'Test']))
+    for row in range(len(scores)):
+        print(row_format.format(*[metric[row],
+                                  str(round(scores[row][0], num_decimals)),
+                                  str(round(scores[row][1], num_decimals))]
+                                )
+              )
 
 
 class LinearClassifier:
@@ -126,6 +149,23 @@ class LinearRegression(LinearClassifier):
     def train(self, train_data, train_target, epochs=20):
         super().train(train_data, train_target, epochs)
 
+class LogisticRegression(LinearClassifier):
+    def __init__(self, lr, init_method='uniform', gd_method='standard'):
+        super().__init__(lr, init_method, gd_method)
+        self.derivative = rmse_derivative
+
+    def init_weights(self, num_features):
+        return super().init_weights(num_features)
+
+    def train(self, train_data, train_target, epochs=20):
+        super().train(train_data, train_target, epochs)
+
+    def predict(self, data):
+        return super().predict(data)
+
+    def predict_sigmoid(self, data):
+        return np.round(sigmoid(super().predict(data)))
+
 
 np.random.seed(RANDOM_STATE)
 
@@ -183,5 +223,54 @@ def q1(train_file):
     print('RMSE test: ', rmse(ytest, model.predict(Xtest)))
     print('-------------------------------')
 
+def q2(train_file):
+    df = read_csv(train_file).drop(columns=['name', 'ticket', 'fare', 'cabin', 'home.dest', 'body'])
+    target = 'survived'
+    for col, type in zip(df.columns, df.dtypes):
+        if type == 'str' or type == 'object':
+            df[col] = df[col].fillna('None')
+            df = df.join(get_dummies(df[col], prefix=col))
+            df = df.drop(columns=col)
+        else:
+            df[col] = df[col].fillna(0)
+    features = [col for col in df.columns if col != target]
+    XTrain, Xtest, yTrain, ytest = train_test_split(df[features], df[target], test_size=0.2, random_state=RANDOM_STATE)
+    print('-------------------------------')
+    print('Standard Gradient Descent')
+    print('-------------------------------')
+    model = LogisticRegression(lr=LEARNING_RATE, init_method='zero', gd_method='standard')
+    model.train(XTrain, yTrain, epochs=1000)
+    reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
+    print('-------------------------------')
+    print('-------------------------------')
+    print('Stochastic Gradient Descent')
+    print('-------------------------------')
+    model = LogisticRegression(lr=LEARNING_RATE, init_method='zero', gd_method='stochastic')
+    model.train(XTrain, yTrain, epochs=10)
+    reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
+    print('-------------------------------')
+    print('-------------------------------')
+    print('Gradient Descent with momentum')
+    print('-------------------------------')
+    model = LogisticRegression(lr=LEARNING_RATE, init_method='zero', gd_method='momentum')
+    model.train(XTrain, yTrain, epochs=1000)
+    reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
+    print('-------------------------------')
+    print('-------------------------------')
+    print('Gradient Descent with Nestorov momentum')
+    print('-------------------------------')
+    model = LogisticRegression(lr=LEARNING_RATE, init_method='zero', gd_method='nestorov')
+    model.train(XTrain, yTrain, epochs=1000)
+    reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
+    print('-------------------------------')
+    print('-------------------------------')
+    print('Adagrad')
+    print('-------------------------------')
+    model = LogisticRegression(lr=LEARNING_RATE, init_method='zero', gd_method='ada')
+    model.train(XTrain, yTrain, epochs=1000)
+    reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
+    print('-------------------------------')
+
 
 q1(HOUSING_DATA_FILE)
+q2(TITANIC_DATA_FILE)
