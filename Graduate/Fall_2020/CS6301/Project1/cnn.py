@@ -216,7 +216,8 @@ class WeightedLayer(Layer):
         return super().backward(derivative)
 
     def update(self, lr):
-        self.weights = self.weights - lr * self.update_weights
+        self.weights = self.weights - lr * self.update_weights        # model.backward(label)
+        # model.update(lr)
         self.update_weights = np.zeros(self.weight_dim)
 
 
@@ -248,8 +249,7 @@ class Vectorizer(Layer):
         return super().forward(np.reshape(input, self.output_dim))
 
     def backward(self, derivative):
-        # return np.reshape(derivative, self.input_dim)
-        return None
+        return np.reshape(derivative, self.input_dim)
 
     def description(self):
         return display_layer_info('Vectorizer', self.input_dim, self.output_dim, 0, np.product(self.input_dim))
@@ -305,6 +305,7 @@ class ReLU(Layer):
 
     def forward(self, input):
         self.input = input
+        self.input_dim = input.shape
         return super().forward(np.maximum(input, 0))
 
     def backward(self, derivative):
@@ -323,6 +324,7 @@ class SoftMax(Layer):
         return np.exp(x) / np.sum(np.exp(x))
 
     def forward(self, input):
+        self.input_dim = input.shape
         return super().forward(self.softmax(input))
 
     def backward(self, x_true):
@@ -355,11 +357,26 @@ class CNN2DConv(WeightedLayer):
                 for k in range(self.output_dim[2] - filter_x):
                     j_stride = j * self.stride
                     k_stride = k * self.stride
-                    output[i][j][k] += np.sum(self.input[:,j_stride:j_stride + filter_y, k_stride:k_stride + filter_x] * self.weights[i // len(input)])
+                    output[i][j][k] += np.sum(self.input[:,j_stride:j_stride + filter_y, k_stride:k_stride + filter_x] * self.weights[i // len(self.input)])
         return output
 
     def backward(self, derivative):
-        return derivative
+        channels = self.filter_dim[0]
+        filter_x = self.filter_dim[1]
+        filter_y = self.filter_dim[2]
+        new_derivative = np.zeros(self.input_dim)
+        for i in range(len(self.input) * channels):
+            for j in range(self.output_dim[1] - filter_y):
+                for k in range(self.output_dim[2] - filter_x):
+                    j_stride = j * self.stride
+                    k_stride = k * self.stride
+                    error = derivative[i][j][k] * self.input[i // channels][j_stride:j_stride + filter_y, k_stride:k_stride + filter_x]
+                    self.update_weights[i // len(self.input)] += error
+                    new_derivative[:,j_stride:j_stride + filter_y, k_stride:k_stride + filter_x] += error
+        return new_derivative
+
+    def description(self):
+        return ''
 
 # Max Pool Layer
 # This layer is very similar to the 2D convolution layer, but instead of multiplying by weights and summing elements it instead
@@ -387,7 +404,22 @@ class CNNMaxPool(Layer):
         return output
 
     def backward(self, derivative):
-        return derivative
+        channels = self.filter_dim[0]
+        filter_x = self.filter_dim[1]
+        filter_y = self.filter_dim[2]
+        new_derivative = np.zeros(self.input_dim)
+        for i in range(len(self.input) * channels):
+            for j in range(self.output_dim[1] - filter_y):
+                for k in range(self.output_dim[2] - filter_x):
+                    j_stride = j * self.stride
+                    k_stride = k * self.stride
+                    region = self.input[i // channels][j_stride:j_stride + filter_y, k_stride:k_stride + filter_x]
+                    error = derivative[i][j][k] * (region == np.max(region))
+                    new_derivative[:,j_stride:j_stride + filter_y, k_stride:k_stride + filter_x] = error
+        return new_derivative
+
+    def description(self):
+        return ''
 
 # Model
 # Consists of layers and a for loop which iterates through each layer and pumps output forward and backward.
@@ -420,7 +452,7 @@ class Model:
         output = input
         for layer in self.layers:
             output = layer.forward(output)
-        return output
+        return output[0]
 
     def backward(self, back):
         for layer in reversed(self.layers):
@@ -448,8 +480,8 @@ for epoch in range(NUM_EPOCHS):
         label = train_labels[i]
         predict = model.forward(d)
         loss += cross_entropy_loss(predict, label)
-        # model.backward(label)
-        # model.update(lr)
+        model.backward(label)
+        model.update(lr)
         tq.set_description('Train Loss: ' + str(np.round(loss / (i + 1), 6)))
 
     train_loss.append(loss)
