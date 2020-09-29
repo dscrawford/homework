@@ -65,8 +65,7 @@ from tqdm import tqdm
 
 # hyper parameters
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 2
-STABILIZING_CONSTANT = 1e-5
+NUM_EPOCHS = 1
 
 # data
 DATA_NUM_TRAIN = 60000
@@ -162,7 +161,11 @@ def cast_dim(dim):
 
 
 def cross_entropy_loss(x, x_true):
-    return -1 * np.log(x[x_true] + STABILIZING_CONSTANT)
+    return -1 * np.log(x[x_true])
+
+def display_layer_info(type, input_size, output_size, parameter_size, MACs):
+    return type + ' Layer\n' + 'Input dim:' + str(input_size) + '\nOutput dim:' + str(output_size) + \
+           '\nNum Parameters: ' + str(parameter_size) + '\nMACs: ' + str(MACs) + '\n'
 
 
 # Layer
@@ -180,8 +183,10 @@ class Layer:
         return derivative
 
     def update(self, lr):
-        self.input = self.output = None
         return
+
+    def description(self):
+        return display_layer_info('Standard', self.input_dim, self.input_dim, 0, 0)
 
 
 # WeightedLayer
@@ -213,7 +218,6 @@ class WeightedLayer(Layer):
     def update(self, lr):
         self.weights = self.weights - lr * self.update_weights
         self.update_weights = np.zeros(self.weight_dim)
-        self.input = self.output = None
 
 
 # Normalize
@@ -227,7 +231,10 @@ class Normalize(Layer):
         return super().forward(input / self.norm_constant)
 
     def backward(self, derivative):
-        return None
+        return derivative * self.norm_constant
+
+    def description(self):
+        return display_layer_info('Normalize', self.input_dim, self.input_dim, 0, np.product(self.input_dim))
 
 
 # Vectorizer
@@ -243,6 +250,9 @@ class Vectorizer(Layer):
     def backward(self, derivative):
         # return np.reshape(derivative, self.input_dim)
         return None
+
+    def description(self):
+        return display_layer_info('Vectorizer', self.input_dim, self.output_dim, 0, np.product(self.input_dim))
 
 
 # MatrixMultiplication
@@ -263,6 +273,9 @@ class MatrixMultiplication(WeightedLayer):
         self.update_weights += np.matmul(np.transpose(self.input), derivative)
         return np.matmul(derivative, np.transpose(self.weights))
 
+    def description(self):
+        return display_layer_info('Matrix Multiplication', self.input_dim, self.output_dim, np.product(self.weights.shape),
+                                  np.product(self.input_dim) * np.product(self.output_dim[1:]))
 
 # Addition
 # Weigthed layer that simply adds a (n,m) weighted bias to an (n,m) matrix
@@ -281,6 +294,8 @@ class Addition(WeightedLayer):
         self.update_weights += derivative
         return derivative
 
+    def description(self):
+        return display_layer_info('Addition', self.input_dim, self.input_dim, np.product(self.weights.shape), np.product(self.input_dim))
 
 # ReLU
 # Layer which applies simple ReLU function elementwise to the matrix
@@ -295,6 +310,8 @@ class ReLU(Layer):
     def backward(self, derivative):
         return derivative * (self.input > 0)
 
+    def description(self):
+        return display_layer_info('ReLU', self.input_dim, self.input_dim, 0, np.product(self.input_dim))
 
 # SoftMax
 # Layer which applies softmax function to input matrix.
@@ -312,6 +329,9 @@ class SoftMax(Layer):
         derivative = self.output
         derivative[0][x_true] -= 1
         return derivative
+
+    def description(self):
+        return display_layer_info('ReLU', self.input_dim, self.input_dim, 0, np.product(self.input_dim))
 
 # 2D Convolutional Layer
 # This layer applies 0 padding of width 1 to each axis on each of the input channels.
@@ -369,7 +389,8 @@ class CNNMaxPool(Layer):
     def backward(self, derivative):
         return derivative
 
-
+# Model
+# Consists of layers and a for loop which iterates through each layer and pumps output forward and backward.
 class Model:
     def __init__(self, init_method='uniform'):
         self.layers = [
@@ -409,30 +430,41 @@ class Model:
         for layer in self.layers:
             layer.update(lr)
 
-
-
+    def description(self):
+        for layer in self.layers:
+            print(layer.description())
 
 t = time()
 model = Model(init_method='uniform')
 
 train_loss = []
-for epoch in range(10):
-    print('EPOCH ', epoch)
+for epoch in range(NUM_EPOCHS):
     lr = LEARNING_RATE
     loss = 0
 
-    for i in tqdm(range(len(train_data))):
+    tq = tqdm(range(len(train_data)))
+    for i in tq:
         d = train_data[i]
         label = train_labels[i]
         predict = model.forward(d)
-        loss += cross_entropy_loss(model.forward(d), label)
+        loss += cross_entropy_loss(predict, label)
         # model.backward(label)
         # model.update(lr)
+        tq.set_description('Train Loss: ' + str(np.round(loss / (i + 1), 6)))
 
     train_loss.append(loss)
 
-    print('\rTrain Loss: ' + str(loss))
+    num_correct = 0
+    for d, label in zip(test_data, test_labels):
+        predict = model.forward(d)
+        num_correct += (np.argmax(predict) == label)
+
+    accuracy = num_correct / len(test_data)
+
+    print('Train Loss: ' + str(loss / len(train_data)))
+    print('Test Accuracy: ' + str(accuracy))
     print()
+
 time_taken = time() - t
 #
 test_predicted_labels = []
@@ -440,7 +472,7 @@ test_loss = 0
 num_correct = 0
 for d, label in zip(test_data, test_labels):
     predict = model.forward(d)
-    loss += cross_entropy_loss(predict, label)
+    test_loss += cross_entropy_loss(predict, label)
     test_predicted_labels.append(np.argmax(predict))
     num_correct += (np.argmax(predict) == label)
 
@@ -457,6 +489,7 @@ accuracy = num_correct / len(test_data)
 # accuracy
 
 # per epoch display (epoch, time, training loss, testing accuracy, ...)
+model.description()
 
 ################################################################################
 #
@@ -467,9 +500,9 @@ accuracy = num_correct / len(test_data)
 # accuracy display
 print('Test Accuracy: ', 100 * num_correct / len(test_data))
 # final value
-print('Test Loss: ', num_correct / len(test_data))
+print('Test Loss: ', test_loss / len(test_data))
 # plot of accuracy vs epoch
-plt.plot(list(range(0, 10)), train_loss)
+plt.plot(list(range(0, NUM_EPOCHS)), train_loss)
 plt.xlabel('EPOCH')
 plt.ylabel('Cross Entropy Loss')
 plt.title('Neural Network Performance Chart')

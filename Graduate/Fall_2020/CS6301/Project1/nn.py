@@ -161,6 +161,11 @@ def cross_entropy_loss(x, x_true):
     return -1 * np.log(x[x_true])
 
 
+def display_layer_info(type, input_size, output_size, parameter_size, MACs):
+    return type + ' Layer\n' + 'Input dim:' + str(input_size) + '\nOutput dim:' + str(output_size) + \
+           '\nNum Parameters: ' + str(parameter_size) + '\nMACs: ' + str(MACs) + '\n'
+
+
 # Layer
 # Class which consists of a forward, backward and update function (by default, update does nothing)
 class Layer:
@@ -176,8 +181,10 @@ class Layer:
         return derivative
 
     def update(self, lr):
-        self.input = self.output = None
         return
+
+    def description(self):
+        return display_layer_info('Standard', self.input_dim, self.input_dim, 0, 0)
 
 
 # WeightedLayer
@@ -209,7 +216,9 @@ class WeightedLayer(Layer):
     def update(self, lr):
         self.weights = self.weights - lr * self.update_weights
         self.update_weights = np.zeros(self.weight_dim)
-        self.input = self.output = None
+
+    def description(self):
+        return display_layer_info('Weighted', self.input_dim, self.input_dim, len(self.weights), 0)
 
 
 # Normalize
@@ -223,7 +232,11 @@ class Normalize(Layer):
         return super().forward(input / self.norm_constant)
 
     def backward(self, derivative):
+        # return derivative * 255.0
         return None
+
+    def description(self):
+        return display_layer_info('Normalize', self.input_dim, self.input_dim, 0, np.product(self.input_dim))
 
 
 # Vectorizer
@@ -240,16 +253,19 @@ class Vectorizer(Layer):
         # return np.reshape(derivative, self.input_dim)
         return None
 
+    def description(self):
+        return display_layer_info('Vectorizer', self.input_dim, self.output_dim, 0, np.product(self.input_dim))
+
 
 # MatrixMultiplication
 # Weighted Layer which transforms a (n,m) matrix to a (n, a) matrix with a (m,a) matrix. (i.e: (n,m) * (m,a) -> (n,a))
 # Matrices can be n-dimensional
 class MatrixMultiplication(WeightedLayer):
     def __init__(self, input_dim, output_dim, init_method='uniform'):
-        input_dim = cast_dim(input_dim)
-        output_dim = cast_dim(output_dim)
+        self.input_dim = cast_dim(input_dim)
+        self.output_dim = cast_dim(output_dim)
         self.h_dim = (input_dim[-1], output_dim[-1])
-        super().__init__(self, self.h_dim, init_method)
+        super().__init__(self.input_dim, self.h_dim, init_method)
 
     def forward(self, input):
         self.input = input
@@ -258,6 +274,10 @@ class MatrixMultiplication(WeightedLayer):
     def backward(self, derivative):
         self.update_weights += np.matmul(np.transpose(self.input), derivative)
         return np.matmul(derivative, np.transpose(self.weights))
+
+    def description(self):
+        return display_layer_info('Matrix Multiplication', self.input_dim, self.output_dim, np.product(self.weights.shape),
+                                  np.product(self.input_dim) * np.product(self.output_dim[1:]))
 
 
 # Addition
@@ -268,7 +288,7 @@ class Addition(WeightedLayer):
         input_dim = cast_dim(input_dim)
         self.h_dim = input_dim
 
-        super().__init__(self, self.h_dim, init_method)
+        super().__init__(input_dim, self.h_dim, init_method)
 
     def forward(self, input):
         return super().forward(self.weights + input)
@@ -276,6 +296,9 @@ class Addition(WeightedLayer):
     def backward(self, derivative):
         self.update_weights += derivative
         return derivative
+
+    def description(self):
+        return display_layer_info('Addition', self.input_dim, self.input_dim, np.product(self.weights.shape), np.product(self.input_dim))
 
 
 # ReLU
@@ -285,11 +308,15 @@ class ReLU(Layer):
         pass
 
     def forward(self, input):
+        self.input_dim = input.shape
         self.input = input
         return super().forward(np.maximum(input, 0))
 
     def backward(self, derivative):
         return derivative * (self.input > 0)
+
+    def description(self):
+        return display_layer_info('ReLU', self.input_dim, self.input_dim, 0, np.product(self.input_dim))
 
 
 # SoftMax
@@ -302,12 +329,16 @@ class SoftMax(Layer):
         return np.exp(x) / np.sum(np.exp(x))
 
     def forward(self, input):
+        self.input_dim = input.shape
         return super().forward(self.softmax(input))
 
     def backward(self, x_true):
         derivative = self.output
         derivative[0][x_true] -= 1
         return derivative
+
+    def description(self):
+        return display_layer_info('ReLU', self.input_dim, self.input_dim, 0, np.product(self.input_dim))
 
 
 # Model
@@ -343,30 +374,19 @@ class Model:
         for layer in self.layers:
             layer.update(lr)
 
+    def description(self):
+        for layer in self.layers:
+            print(layer.description())
+
 
 model = Model(init_method='normal')
 
 t = time()
-# train_data = train_data[0:1000]
-# train_labels = train_labels[0:1000]
-# test_data = test_data[0:1000]
-# test_labels = test_labels[0:1000]
 train_loss = []
-
-# import sys
-
-# print(model.forward(train_data[0]))
-# model.backward(train_labels[0])
-
-# sys.exit(0)
-
 
 for epoch in range(NUM_EPOCHS):
     lr = LEARNING_RATE
     loss = 0
-
-    # idx = np.random.permutation(len(train_data))
-    # train_data, train_labels = train_data[idx], train_labels[idx]
 
     tq = tqdm(range(len(train_data)))
     for i in tq:
@@ -390,7 +410,6 @@ for epoch in range(NUM_EPOCHS):
     print('Train Loss: ' + str(loss / len(train_data)))
     print('Test Accuracy: ' + str(accuracy))
     print()
-
 
 time_taken = time() - t
 #
@@ -416,6 +435,7 @@ accuracy = num_correct / len(test_data)
 # accuracy
 
 # per epoch display (epoch, time, training loss, testing accuracy, ...)
+model.description()
 
 ################################################################################
 #
