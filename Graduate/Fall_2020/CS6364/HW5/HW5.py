@@ -238,6 +238,7 @@ def q2(train_file):
     print('-------------------------------')
     print('Standard Gradient Descent')
     print('-------------------------------')
+    LEARNING_RATE = 0.01
     model = LogisticRegression(lr=LEARNING_RATE, init_method='zero', gd_method='standard')
     model.train(XTrain, yTrain, epochs=1000)
     reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
@@ -259,7 +260,7 @@ def q2(train_file):
     print('-------------------------------')
     print('Gradient Descent with Nestorov momentum')
     print('-------------------------------')
-    model = LogisticRegression(lr=LEARNING_RATE, init_method='zero', gd_method='nestorov')
+    model = LogisticRegression(lr=0.0001, init_method='zero', gd_method='nestorov')
     model.train(XTrain, yTrain, epochs=1000)
     reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
     print('-------------------------------')
@@ -270,7 +271,10 @@ def q2(train_file):
     model.train(XTrain, yTrain, epochs=1000)
     reportClassifierPerformance(yTrain, model.predict_sigmoid(XTrain), ytest, model.predict_sigmoid(Xtest), name='')
     print('-------------------------------')
-q
 
+print('Housing Data Set')
 q1(HOUSING_DATA_FILE)
+print()
+print()
+print('Titanic Data Set')
 q2(TITANIC_DATA_FILE)

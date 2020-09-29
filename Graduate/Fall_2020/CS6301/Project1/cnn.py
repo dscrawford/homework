@@ -4,6 +4,10 @@
 #
 #    Daniel Crawford
 #    dsc160130
+
+# NOTE
+#
+# Unfortunately, I was not able to find out back propagation for this section.
 #
 # DESCRIPTION
 #
@@ -161,6 +165,8 @@ def cross_entropy_loss(x, x_true):
     return -1 * np.log(x[x_true] + STABILIZING_CONSTANT)
 
 
+# Layer
+# Class which consists of a forward, backward and update function (by default, update does nothing)
 class Layer:
     def __init__(self, input_dim):
         self.input_dim = input_dim
@@ -170,13 +176,16 @@ class Layer:
         self.output = input
         return self.output
 
-    def backward(self, loss):
-        pass
+    def backward(self, derivative):
+        return derivative
 
     def update(self, lr):
+        self.input = self.output = None
         return
 
 
+# WeightedLayer
+# Class which has weighted operations associated with it
 class WeightedLayer(Layer):
     def __init__(self, input_dim, weight_dim, init_method='uniform'):
 
@@ -188,24 +197,27 @@ class WeightedLayer(Layer):
 
         super().__init__(input_dim)
         if init_method == 'uniform':
-            self.weights = np.random.uniform(0, 1, weight_dim)
+            self.weights = np.random.uniform(0, 1, weight_dim) / 100
         elif init_method == 'normal':
-            self.weights = np.random.normal(0, 1, weight_dim)
-        elif init_method == 'zero':
+            self.weights = np.random.normal(0, 1, weight_dim) / 100
+        else:
             self.weights = np.zeros(weight_dim)
         self.update_weights = np.zeros(weight_dim)
 
     def forward(self, input):
         return super().forward(input)
 
-    def backward(self, loss):
-        return super().backward(loss)
+    def backward(self, derivative):
+        return super().backward(derivative)
 
     def update(self, lr):
-        self.weights -= lr * self.update_weights
+        self.weights = self.weights - lr * self.update_weights
         self.update_weights = np.zeros(self.weight_dim)
+        self.input = self.output = None
 
 
+# Normalize
+# Layer which normalizes all values from a given input with a constant
 class Normalize(Layer):
     def __init__(self, input_dim, norm_constant):
         super().__init__(input_dim)
@@ -215,9 +227,11 @@ class Normalize(Layer):
         return super().forward(input / self.norm_constant)
 
     def backward(self, derivative):
-        return derivative
+        return None
 
 
+# Vectorizer
+# Layer which flattens input dimensions (i.e, a (32,16,16) becomes a (1, 32 * 16 * 16)
 class Vectorizer(Layer):
     def __init__(self, input_dim):
         super().__init__(input_dim)
@@ -227,9 +241,13 @@ class Vectorizer(Layer):
         return super().forward(np.reshape(input, self.output_dim))
 
     def backward(self, derivative):
-        return np.reshape(derivative, self.input_dim)
+        # return np.reshape(derivative, self.input_dim)
+        return None
 
 
+# MatrixMultiplication
+# Weighted Layer which transforms a (n,m) matrix to a (n, a) matrix with a (m,a) matrix. (i.e: (n,m) * (m,a) -> (n,a))
+# Matrices can be n-dimensional
 class MatrixMultiplication(WeightedLayer):
     def __init__(self, input_dim, output_dim, init_method='uniform'):
         input_dim = cast_dim(input_dim)
@@ -246,6 +264,9 @@ class MatrixMultiplication(WeightedLayer):
         return np.matmul(derivative, np.transpose(self.weights))
 
 
+# Addition
+# Weigthed layer that simply adds a (n,m) weighted bias to an (n,m) matrix
+# Matrices can be n-dimensional
 class Addition(WeightedLayer):
     def __init__(self, input_dim, init_method='uniform'):
         input_dim = cast_dim(input_dim)
@@ -261,6 +282,8 @@ class Addition(WeightedLayer):
         return derivative
 
 
+# ReLU
+# Layer which applies simple ReLU function elementwise to the matrix
 class ReLU(Layer):
     def __init__(self):
         pass
@@ -270,16 +293,17 @@ class ReLU(Layer):
         return super().forward(np.maximum(input, 0))
 
     def backward(self, derivative):
-        return derivative * (self.output > 0)
+        return derivative * (self.input > 0)
 
 
+# SoftMax
+# Layer which applies softmax function to input matrix.
 class SoftMax(Layer):
     def __init__(self):
         pass
 
     def softmax(self, x):
-        e_x = np.exp(x - np.max(x))
-        return np.exp(e_x) / np.sum(np.exp(e_x))
+        return np.exp(x) / np.sum(np.exp(x))
 
     def forward(self, input):
         return super().forward(self.softmax(input))
@@ -289,7 +313,10 @@ class SoftMax(Layer):
         derivative[0][x_true] -= 1
         return derivative
 
-
+# 2D Convolutional Layer
+# This layer applies 0 padding of width 1 to each axis on each of the input channels.
+# After this, the input dimensions were spliced to get the current filter focus, then they are all multiplied with a filter
+# and summed to a single element.
 class CNN2DConv(WeightedLayer):
     def __init__(self, input_dim, output_dim, filter_dim, stride, init_method='uniform'):
         super().__init__(input_dim, filter_dim, init_method)
@@ -298,23 +325,25 @@ class CNN2DConv(WeightedLayer):
         self.output_dim = output_dim
 
     def forward(self, input):
-        input = np.pad(input, [[0, 0], [1, 1], [1, 1]])
+        self.input = np.pad(input, [[0, 0], [1, 1], [1, 1]])
         output = np.zeros(self.output_dim)
         channels = self.filter_dim[0]
         filter_x = self.filter_dim[1]
         filter_y = self.filter_dim[2]
-        for i in range(len(input) * channels):
-                for j in range(self.output_dim[1] - filter_y):
-                    for k in range(self.output_dim[2] - filter_x):
-                        j_stride = j * self.stride
-                        k_stride = k * self.stride
-                        output[i][j][k] = np.sum(input[i // channels][j_stride:j_stride + filter_y, k_stride:k_stride + filter_x] * self.weights[i // len(input)])
+        for i in range(len(self.input) * channels):
+            for j in range(self.output_dim[1] - filter_y):
+                for k in range(self.output_dim[2] - filter_x):
+                    j_stride = j * self.stride
+                    k_stride = k * self.stride
+                    output[i][j][k] += np.sum(self.input[:,j_stride:j_stride + filter_y, k_stride:k_stride + filter_x] * self.weights[i // len(input)])
         return output
 
     def backward(self, derivative):
         return derivative
 
-
+# Max Pool Layer
+# This layer is very similar to the 2D convolution layer, but instead of multiplying by weights and summing elements it instead
+# finds the max within each focuses layer.
 class CNNMaxPool(Layer):
     def __init__(self, input_dim, output_dim, filter_dim, stride):
         super().__init__(input_dim)
@@ -323,13 +352,13 @@ class CNNMaxPool(Layer):
         self.output_dim = output_dim
 
     def forward(self, input):
-        input = np.pad(input, [[0, 0], [1, 1], [1, 1]])
+        self.input = np.pad(input, [[0, 0], [1, 1], [1, 1]])
         output = np.zeros(self.output_dim)
         channels = self.filter_dim[0]
         filter_x = self.filter_dim[1]
         filter_y = self.filter_dim[2]
 
-        for i in range(len(input) * channels):
+        for i in range(len(self.input) * channels):
                 for j in range(self.output_dim[1]):
                     for k in range(self.output_dim[2]):
                         j_stride = j * self.stride
@@ -344,16 +373,16 @@ class CNNMaxPool(Layer):
 class Model:
     def __init__(self, init_method='uniform'):
         self.layers = [
-            Normalize((28, 28), 255.0),
-            CNN2DConv((28, 28), (16, 28, 28), (16, 3, 3), 1, init_method=init_method),
+            Normalize((1, 28, 28), 255.0),
+            CNN2DConv((1, 28, 28), (16, 28, 28), (16, 1, 3, 3), 1, init_method=init_method),
             Addition((16, 28, 28), init_method=init_method),
             ReLU(),
             CNNMaxPool((16, 28, 28), (16, 14, 14), (1, 3, 3), 2),
-            CNN2DConv((16, 14, 14), (32, 14, 14), (2, 3, 3), 1, init_method=init_method),
+            CNN2DConv((16, 14, 14), (32, 14, 14), (32, 16, 3, 3), 1, init_method=init_method),
             Addition((32, 14, 14), init_method=init_method),
             ReLU(),
             CNNMaxPool((32, 14, 14), (32, 7, 7), (1, 3, 3), 2),
-            CNN2DConv((32, 7, 7), (64, 7, 7), (1, 3, 3), 1, init_method=init_method),
+            CNN2DConv((32, 7, 7), (64, 7, 7), (64, 32, 3, 3), 1, init_method=init_method),
             Addition((64, 7, 7), init_method=init_method),
             ReLU(),
             Vectorizer((64, 7, 7)),
@@ -385,12 +414,6 @@ class Model:
 
 t = time()
 model = Model(init_method='uniform')
-print(model.forward(train_data[0])[0])
-print(time() - t)
-from sys import exit
-
-
-exit(0)
 
 train_loss = []
 for epoch in range(10):
@@ -403,8 +426,8 @@ for epoch in range(10):
         label = train_labels[i]
         predict = model.forward(d)
         loss += cross_entropy_loss(model.forward(d), label)
-        model.backward(label)
-        model.update(lr)
+        # model.backward(label)
+        # model.update(lr)
 
     train_loss.append(loss)
 
@@ -442,7 +465,7 @@ accuracy = num_correct / len(test_data)
 ################################################################################
 
 # accuracy display
-print('Test Accuracy: ', num_correct / len(test_data))
+print('Test Accuracy: ', 100 * num_correct / len(test_data))
 # final value
 print('Test Loss: ', num_correct / len(test_data))
 # plot of accuracy vs epoch

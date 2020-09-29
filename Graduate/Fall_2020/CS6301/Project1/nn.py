@@ -60,8 +60,8 @@ from tqdm import tqdm
 ################################################################################
 
 # hyper parameters
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 2
+LEARNING_RATE = 0.01
+NUM_EPOCHS = 10
 STABILIZING_CONSTANT = 1e-5
 
 # data
@@ -158,9 +158,11 @@ def cast_dim(dim):
 
 
 def cross_entropy_loss(x, x_true):
-    return -1 * np.log(x[x_true] + STABILIZING_CONSTANT)
+    return -1 * np.log(x[x_true])
 
 
+# Layer
+# Class which consists of a forward, backward and update function (by default, update does nothing)
 class Layer:
     def __init__(self, input_dim):
         self.input_dim = input_dim
@@ -170,13 +172,16 @@ class Layer:
         self.output = input
         return self.output
 
-    def backward(self, loss):
-        pass
+    def backward(self, derivative):
+        return derivative
 
     def update(self, lr):
+        self.input = self.output = None
         return
 
 
+# WeightedLayer
+# Class which has weighted operations associated with it
 class WeightedLayer(Layer):
     def __init__(self, input_dim, weight_dim, init_method='uniform'):
 
@@ -188,24 +193,27 @@ class WeightedLayer(Layer):
 
         super().__init__(input_dim)
         if init_method == 'uniform':
-            self.weights = np.random.uniform(0, 1, weight_dim)
+            self.weights = np.random.uniform(0, 1, weight_dim) / 100
         elif init_method == 'normal':
-            self.weights = np.random.normal(0, 1, weight_dim)
-        elif init_method == 'zero':
+            self.weights = np.random.normal(0, 1, weight_dim) / 100
+        else:
             self.weights = np.zeros(weight_dim)
         self.update_weights = np.zeros(weight_dim)
 
     def forward(self, input):
         return super().forward(input)
 
-    def backward(self, loss):
-        return super().backward(loss)
+    def backward(self, derivative):
+        return super().backward(derivative)
 
     def update(self, lr):
-        self.weights -= lr * self.update_weights
+        self.weights = self.weights - lr * self.update_weights
         self.update_weights = np.zeros(self.weight_dim)
+        self.input = self.output = None
 
 
+# Normalize
+# Layer which normalizes all values from a given input with a constant
 class Normalize(Layer):
     def __init__(self, input_dim, norm_constant):
         super().__init__(input_dim)
@@ -215,10 +223,11 @@ class Normalize(Layer):
         return super().forward(input / self.norm_constant)
 
     def backward(self, derivative):
-        # return derivative
         return None
 
 
+# Vectorizer
+# Layer which flattens input dimensions (i.e, a (32,16,16) becomes a (1, 32 * 16 * 16)
 class Vectorizer(Layer):
     def __init__(self, input_dim):
         super().__init__(input_dim)
@@ -232,6 +241,9 @@ class Vectorizer(Layer):
         return None
 
 
+# MatrixMultiplication
+# Weighted Layer which transforms a (n,m) matrix to a (n, a) matrix with a (m,a) matrix. (i.e: (n,m) * (m,a) -> (n,a))
+# Matrices can be n-dimensional
 class MatrixMultiplication(WeightedLayer):
     def __init__(self, input_dim, output_dim, init_method='uniform'):
         input_dim = cast_dim(input_dim)
@@ -248,6 +260,9 @@ class MatrixMultiplication(WeightedLayer):
         return np.matmul(derivative, np.transpose(self.weights))
 
 
+# Addition
+# Weigthed layer that simply adds a (n,m) weighted bias to an (n,m) matrix
+# Matrices can be n-dimensional
 class Addition(WeightedLayer):
     def __init__(self, input_dim, init_method='uniform'):
         input_dim = cast_dim(input_dim)
@@ -263,6 +278,8 @@ class Addition(WeightedLayer):
         return derivative
 
 
+# ReLU
+# Layer which applies simple ReLU function elementwise to the matrix
 class ReLU(Layer):
     def __init__(self):
         pass
@@ -272,16 +289,17 @@ class ReLU(Layer):
         return super().forward(np.maximum(input, 0))
 
     def backward(self, derivative):
-        return derivative * (self.output > 0)
+        return derivative * (self.input > 0)
 
 
+# SoftMax
+# Layer which applies softmax function to input matrix.
 class SoftMax(Layer):
     def __init__(self):
         pass
 
     def softmax(self, x):
-        e_x = np.exp(x - np.max(x))
-        return np.exp(e_x) / np.sum(np.exp(e_x))
+        return np.exp(x) / np.sum(np.exp(x))
 
     def forward(self, input):
         return super().forward(self.softmax(input))
@@ -292,6 +310,8 @@ class SoftMax(Layer):
         return derivative
 
 
+# Model
+# Consists of layers and a for loop which iterates through each layer and pumps output forward and backward.
 class Model:
     def __init__(self, init_method='uniform'):
         self.layers = [
@@ -319,39 +339,59 @@ class Model:
         for layer in reversed(self.layers):
             back = layer.backward(back)
 
-
     def update(self, lr):
         for layer in self.layers:
             layer.update(lr)
 
 
-model = Model(init_method='uniform')
-
+model = Model(init_method='normal')
 
 t = time()
-
-train_data = train_data[0:1000]
-train_labels = train_labels[0:1000]
-test_data = train_data[0:1000]
-test_labels = test_labels[0:1000]
+# train_data = train_data[0:1000]
+# train_labels = train_labels[0:1000]
+# test_data = test_data[0:1000]
+# test_labels = test_labels[0:1000]
 train_loss = []
-for epoch in range(10):
-    print('EPOCH ', epoch)
+
+# import sys
+
+# print(model.forward(train_data[0]))
+# model.backward(train_labels[0])
+
+# sys.exit(0)
+
+
+for epoch in range(NUM_EPOCHS):
     lr = LEARNING_RATE
     loss = 0
 
-    for i in tqdm(range(len(train_data))):
+    # idx = np.random.permutation(len(train_data))
+    # train_data, train_labels = train_data[idx], train_labels[idx]
+
+    tq = tqdm(range(len(train_data)))
+    for i in tq:
         d = train_data[i]
         label = train_labels[i]
         predict = model.forward(d)
-        loss += cross_entropy_loss(model.forward(d), label)
+        loss += cross_entropy_loss(predict, label)
         model.backward(label)
         model.update(lr)
+        tq.set_description('Train Loss: ' + str(np.round(loss / (i + 1), 6)))
 
     train_loss.append(loss)
 
-    print('\rTrain Loss: ' + str(loss))
+    num_correct = 0
+    for d, label in zip(test_data, test_labels):
+        predict = model.forward(d)
+        num_correct += (np.argmax(predict) == label)
+
+    accuracy = num_correct / len(test_data)
+
+    print('Train Loss: ' + str(loss / len(train_data)))
+    print('Test Accuracy: ' + str(accuracy))
     print()
+
+
 time_taken = time() - t
 #
 test_predicted_labels = []
@@ -359,12 +399,11 @@ test_loss = 0
 num_correct = 0
 for d, label in zip(test_data, test_labels):
     predict = model.forward(d)
-    loss += cross_entropy_loss(predict, label)
+    test_loss += cross_entropy_loss(predict, label)
     test_predicted_labels.append(np.argmax(predict))
     num_correct += (np.argmax(predict) == label)
 
 accuracy = num_correct / len(test_data)
-
 
 # cycle through the training data
 # forward pass
@@ -385,11 +424,11 @@ accuracy = num_correct / len(test_data)
 ################################################################################
 
 # accuracy display
-print('Test Accuracy: ', num_correct / len(test_data))
+print('Test Accuracy: ', 100 * num_correct / len(test_data))
 # final value
-print('Test Loss: ', num_correct / len(test_data))
+print('Test Loss: ', test_loss / len(test_data))
 # plot of accuracy vs epoch
-plt.plot(list(range(0,10)), train_loss)
+plt.plot(list(range(0, NUM_EPOCHS)), train_loss)
 plt.xlabel('EPOCH')
 plt.ylabel('Cross Entropy Loss')
 plt.title('Neural Network Performance Chart')
