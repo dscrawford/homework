@@ -69,8 +69,9 @@ def train_model(X_train, y_train, model, criterion, optimizer, num_epochs=20):
             loss.backward()
             train_loss.append(loss.item())
             optimizer.step()
-        print('Epoch [{}/{}], Loss: {:.4f}'
-              .format(epoch + 1, num_epochs, np.sqrt(np.mean(train_loss))))
+        print('\rEpoch [{}/{}], Train Loss: {:.4f}'
+              .format(epoch + 1, num_epochs, np.sqrt(np.mean(train_loss))), end='')
+    print()
 
 def eval_model_mse(X_test, y_test, model):
     model.eval()
@@ -122,7 +123,7 @@ def q1():
             df[col] = df[col].fillna(0)
     features = [col for col in df.columns if col != target]
 
-    XTrain, Xtest, yTrain, ytest = train_test_split(df[features], df[target], test_size=0.3, random_state=RANDOM_STATE)
+    XTrain, Xtest, yTrain, ytest = train_test_split(df[features], df[target], test_size=0.2, random_state=RANDOM_STATE)
 
     input_size = len(features)
     model = RegressionNN(input_size, 16, 32).to(device)
@@ -154,7 +155,10 @@ def q2():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     train_model(XTrain, yTrain, model, criterion, optimizer, num_epochs=100)
-    reportClassifierPerformance(yTrain, eval_model_classifier(XTrain, yTrain, model), ytest, eval_model_classifier(Xtest, ytest, model))
+    reportClassifierPerformance(yTrain,
+                                eval_model_classifier(XTrain, yTrain, model),
+                                ytest,
+                                eval_model_classifier(Xtest, ytest, model))
 
 print('Boston Housing Dataset: ')
 q1()
