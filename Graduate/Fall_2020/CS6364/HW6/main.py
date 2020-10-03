@@ -62,13 +62,11 @@ def train_model(X_train, y_train, model, criterion, optimizer, num_epochs=20):
         for i, (features, true) in enumerate(zip(X_train, y_train)):
             # Forward pass
             outputs = model(features)[0]
-            print(outputs, true)
             loss = criterion(outputs, true)
 
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
-            print(loss.item())
             train_loss.append(loss.item())
             optimizer.step()
         print('Epoch [{}/{}], Loss: {:.4f}'
@@ -129,7 +127,7 @@ def q1():
     input_size = len(features)
     model = RegressionNN(input_size, 16, 32).to(device)
 
-    criterion = nn.BCELoss()
+    criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     train_model(XTrain, yTrain, model, criterion, optimizer, num_epochs=100)
