@@ -5,6 +5,10 @@
 #    Daniel Crawford
 #    dsc160130
 #
+# FILE
+#
+#    nn.py
+#
 # DESCRIPTION
 #
 #    MNIST image classification with an xNN written and trained in Python
@@ -18,16 +22,126 @@
 #
 # NOTES
 #
-#    1. This does not use PyTorch, TensorFlow or any other xNN library
+#    1. A summary of my nn.py code:
 #
-#    2. Include a short summary here in nn.py of what you did for the neural
-#       network portion of code
+#       Forward Path Code:
+#           The forward path is controlled by template classes called Layer, WeightedLayer and Model.
+#           Additionally, the forward pass will save input if needed for the backward pass.
+#               Model simply iterates through each of the layers and pumps output from previous layer to next layer.
+#               Layer is a non-weighted NN layer that will pass forward an arbitrary non-weighted operation (Max pool, vectorize, ReLU)
+#               WeightedLayer is a weighted NN layer that pass forward an arbitrary weigthed operation (MatrixMultiplication, Addition)
 #
-#    3. Include a short summary here in cnn.py of what you did for the
-#       convolutional neural network portion of code
+#       Error Code:
+#           Error is computed through cross_entropy_loss, the displayed loss will usually be this function aggregated
+#           and averaged.
 #
-#    4. Include a short summary here in extra.py of what you did for the extra
-#       portion of code
+#       Backward Path Code:
+#           Similar to forward path, the backward path goes through the model through the Model, Layer and WeightedLayer classes.
+#               Model backward function takes correct label for data and puts it into last layer.
+#               Layer+WeightedLayer return their respective derivatives multiplied by the derivatives they receive.
+#
+#       Weight Update Code:
+#           Each WeightedLayer holds an update weight called update_weights same dimensions as weights. Upon calling
+#           layer.update(), update_weights are added to the weights with an input learning rate.
+#
+#       Extra:
+#           You will notice in the backwards pass that Normalize and Vectorize do not return anything. This is for
+#           performance only because they are not needed for this specific example.
+#
+#    2. Accuracy display
+#
+# Train Loss: 0.292635: 100%|██████████| 60000/60000 [04:59<00:00, 200.51it/s]
+# Train Loss: 0.292635275128901
+# Test Accuracy: 0.9546
+# Train Loss: 0.090328: 100%|██████████| 60000/60000 [04:55<00:00, 203.24it/s]
+# Train Loss: 0.09032760041587834
+# Test Accuracy: 0.9715
+# Train Loss: 0.057369: 100%|██████████| 60000/60000 [04:56<00:00, 202.23it/s]
+# Train Loss: 0.0573690924060683
+# Test Accuracy: 0.9695
+# Train Loss: 0.04139: 100%|██████████| 60000/60000 [04:55<00:00, 203.16it/s]
+# Train Loss: 0.04139010430699511
+# Test Accuracy: 0.9781
+# Train Loss: 0.031412: 100%|██████████| 60000/60000 [05:03<00:00, 197.48it/s]
+# Train Loss: 0.03141150109060862
+# Test Accuracy: 0.9707
+# Train Loss: 0.026368: 100%|██████████| 60000/60000 [04:53<00:00, 204.29it/s]
+# Train Loss: 0.02636792131513013
+# Test Accuracy: 0.9738
+# Train Loss: 0.021671: 100%|██████████| 60000/60000 [04:52<00:00, 205.18it/s]
+# Train Loss: 0.0216710897789739
+# Test Accuracy: 0.9776
+# Train Loss: 0.019675: 100%|██████████| 60000/60000 [04:48<00:00, 207.96it/s]
+# Train Loss: 0.019674705079921723
+# Test Accuracy: 0.9774
+# Train Loss: 0.017662: 100%|██████████| 60000/60000 [04:46<00:00, 209.41it/s]
+# Train Loss: 0.017662136397378944
+# Test Accuracy: 0.9692
+# Train Loss: 0.01757: 100%|██████████| 60000/60000 [04:45<00:00, 209.93it/s]
+# Train Loss: 0.01757029891800587
+# Test Accuracy: 0.9812
+#
+#    3. Performance display
+#
+# Normalize Layer
+# Input dim:(28, 28)
+# Output dim:(28, 28)
+# Num Parameters: 0
+# MACs: 784
+# Vectorizer Layer
+# Input dim:(28, 28)
+# Output dim:(1, 784)
+# Num Parameters: 0
+# MACs: 784
+# Matrix Multiplication Layer
+# Input dim:[1, 784]
+# Output dim:[1, 1000]
+# Num Parameters: 784000
+# MACs: 784000
+# Addition Layer
+# Input dim:[1, 1000]
+# Output dim:[1, 1000]
+# Num Parameters: 1000
+# MACs: 1000
+# ReLU Layer
+# Input dim:(1, 1000)
+# Output dim:(1, 1000)
+# Num Parameters: 0
+# MACs: 1000
+# Matrix Multiplication Layer
+# Input dim:[1, 1000]
+# Output dim:[1, 100]
+# Num Parameters: 100000
+# MACs: 100000
+# Addition Layer
+# Input dim:[1, 100]
+# Output dim:[1, 100]
+# Num Parameters: 100
+# MACs: 100
+# ReLU Layer
+# Input dim:(1, 100)
+# Output dim:(1, 100)
+# Num Parameters: 0
+# MACs: 100
+# Matrix Multiplication Layer
+# Input dim:[1, 100]
+# Output dim:[1, 10]
+# Num Parameters: 1000
+# MACs: 1000
+# Addition Layer
+# Input dim:[1, 10]
+# Output dim:[1, 10]
+# Num Parameters: 10
+# MACs: 10
+# ReLU Layer
+# Input dim:(1, 10)
+# Output dim:(1, 10)
+# Num Parameters: 0
+# MACs: 10
+# Test Accuracy:  98.12
+# Test Loss:  0.08622763789432848
+# Time Taken:  2946.323134660721
+#
 #
 ################################################################################
 

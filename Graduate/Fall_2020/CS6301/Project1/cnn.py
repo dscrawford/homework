@@ -4,10 +4,10 @@
 #
 #    Daniel Crawford
 #    dsc160130
-
-# NOTE
 #
-# Unfortunately, I was not able to find out back propagation for this section.
+# FILE
+#
+#    cnn.py
 #
 # DESCRIPTION
 #
@@ -22,16 +22,40 @@
 #
 # NOTES
 #
-#    1. This does not use PyTorch, TensorFlow or any other xNN library
+#    1. A summary of my cnn.py code:
 #
-#    2. Include a short summary here in nn.py of what you did for the neural
-#       network portion of code
+#       Forward Path Code:
+#           The forward path is controlled by template classes called Layer, WeightedLayer and Model.
+#           Additionally, the forward pass will save input if needed for the backward pass.
+#               Model simply iterates through each of the layers and pumps output from previous layer to next layer.
+#               Layer is a non-weighted NN layer that will pass forward an arbitrary non-weighted operation (Max pool, vectorize, ReLU)
+#               WeightedLayer is a weighted NN layer that pass forward an arbitrary weigthed operation (MatrixMultiplication, Addition)
 #
-#    3. Include a short summary here in cnn.py of what you did for the
-#       convolutional neural network portion of code
+#       Error Code:
+#           Error is computed through cross_entropy_loss, the displayed loss will usually be this function aggregated
+#           and averaged.
 #
-#    4. Include a short summary here in extra.py of what you did for the extra
-#       portion of code
+#       Backward Path Code:
+#           Similar to forward path, the backward path goes through the model through the Model, Layer and WeightedLayer classes.
+#               Model backward function takes correct label for data and puts it into last layer.
+#               Layer+WeightedLayer return their respective derivatives multiplied by the derivatives they receive.
+#
+#       Weight Update Code:
+#           Each WeightedLayer holds an update weight called update_weights same dimensions as weights. Upon calling
+#           layer.update(), update_weights are added to the weights with an input learning rate.
+#
+#       CNN Code:
+#           This model has an implemented forward and backward pass for the pooling and convolution layers, but I had some
+#           issues getting them working 100% properly. For this reason, the outputs are not included for this NN.
+#           The code explaining the convolution/max pool are above the classes for them.
+#
+#
+#    2. Accuracy display
+#       Not included
+#
+#
+#    3. Performance display
+#       Not included
 #
 ################################################################################
 
