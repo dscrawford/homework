@@ -72,6 +72,7 @@ import math
 import numpy             as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+
 ################################################################################
 #
 # PARAMETERS
@@ -95,7 +96,7 @@ DATA_URL_TRAIN_3 = 'https://github.com/arthurredfern/UT-Dallas-CS-6301-CNNs/raw/
 DATA_URL_TRAIN_4 = 'https://github.com/arthurredfern/UT-Dallas-CS-6301-CNNs/raw/master/Data/Train4.zip'
 DATA_URL_TRAIN_5 = 'https://github.com/arthurredfern/UT-Dallas-CS-6301-CNNs/raw/master/Data/Train5.zip'
 DATA_URL_TEST_1 = 'https://github.com/arthurredfern/UT-Dallas-CS-6301-CNNs/raw/master/Data/Val1.zip'
-DATA_BATCH_SIZE = 256#512
+DATA_BATCH_SIZE = 32
 DATA_NUM_WORKERS = 4
 DATA_NUM_CHANNELS = 3
 DATA_NUM_CLASSES = 100
@@ -105,7 +106,6 @@ DATA_MEAN = (0.485, 0.456, 0.406)
 DATA_STD_DEV = (0.229, 0.224, 0.225)
 
 # model
-HEAD_OUTPUT_CHANNELS = 32
 STAGE_0_CHANNELS = 24
 STAGE_1_CHANNELS = 56
 STAGE_2_CHANNELS = 152
@@ -116,13 +116,29 @@ STAGE_2_BLOCKS = 4
 STAGE_3_BLOCKS = 7
 
 # training
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 20
+WEIGHT_DECAY = 5e-5
+OPTIMIZER_NAME = 'Adam'
+CURRENT_EPOCH = 0
+
+# training (linear warm up with cosine decay learning rate)
+if OPTIMIZER_NAME == 'SGD':                                                                                                                                                                             
+  TRAINING_LR_MAX          = 0.1
+  TRAINING_LR_INIT_SCALE   = 0.1
+  TRAINING_LR_FINAL_SCALE  = 0.01
+else:
+  TRAINING_LR_MAX          = 0.001
+  TRAINING_LR_INIT_SCALE   = 0.01
+  TRAINING_LR_FINAL_SCALE  = 0.01
+TRAINING_LR_INIT_EPOCHS  = 5
+TRAINING_LR_FINAL_EPOCHS = 100
+TRAINING_NUM_EPOCHS      = TRAINING_LR_INIT_EPOCHS + TRAINING_LR_FINAL_EPOCHS
+TRAINING_LR_INIT         = TRAINING_LR_MAX*TRAINING_LR_INIT_SCALE
+TRAINING_LR_FINAL        = TRAINING_LR_MAX*TRAINING_LR_FINAL_SCALE
 
 
 # file
-# add file parameters here
-
+MODEL_PATH = 'model.pt'
+FILE_LOAD = False
 ################################################################################
 #
 # DATA
@@ -139,11 +155,11 @@ if (os.path.exists(DATA_DIR_TRAIN) == False):
 if (os.path.exists(DATA_DIR_TEST) == False):
     os.mkdir(DATA_DIR_TEST)
 
-# download data
+# download data & extract
 if (os.path.exists(DATA_FILE_TRAIN_1) == False):
     urllib.request.urlretrieve(DATA_URL_TRAIN_1, DATA_FILE_TRAIN_1)
 if (os.path.exists(DATA_FILE_TRAIN_2) == False):
-    urllib.request.urlretrieve(DATA_URL_TRAIN_2, DATA_FILE_TRAIN_2)
+    urllib.request.urlretrieve(DATA_URL_TRAIN_2, DATA_FILE_TRAIN_2)   
 if (os.path.exists(DATA_FILE_TRAIN_3) == False):
     urllib.request.urlretrieve(DATA_URL_TRAIN_3, DATA_FILE_TRAIN_3)
 if (os.path.exists(DATA_FILE_TRAIN_4) == False):
@@ -153,19 +169,17 @@ if (os.path.exists(DATA_FILE_TRAIN_5) == False):
 if (os.path.exists(DATA_FILE_TEST_1) == False):
     urllib.request.urlretrieve(DATA_URL_TEST_1, DATA_FILE_TEST_1)
 
-# extract data
+
 with zipfile.ZipFile(DATA_FILE_TRAIN_1, 'r') as zip_ref:
-    zip_ref.extractall(DATA_DIR_TRAIN)
+  zip_ref.extractall(DATA_DIR_TRAIN)
 with zipfile.ZipFile(DATA_FILE_TRAIN_2, 'r') as zip_ref:
-    zip_ref.extractall(DATA_DIR_TRAIN)
+  zip_ref.extractall(DATA_DIR_TRAIN) 
 with zipfile.ZipFile(DATA_FILE_TRAIN_3, 'r') as zip_ref:
-    zip_ref.extractall(DATA_DIR_TRAIN)
+  zip_ref.extractall(DATA_DIR_TRAIN)
 with zipfile.ZipFile(DATA_FILE_TRAIN_4, 'r') as zip_ref:
-    zip_ref.extractall(DATA_DIR_TRAIN)
-with zipfile.ZipFile(DATA_FILE_TRAIN_5, 'r') as zip_ref:
-    zip_ref.extractall(DATA_DIR_TRAIN)
+  zip_ref.extractall(DATA_DIR_TRAIN)
 with zipfile.ZipFile(DATA_FILE_TEST_1, 'r') as zip_ref:
-    zip_ref.extractall(DATA_DIR_TEST)
+  zip_ref.extractall(DATA_DIR_TEST)
 
 # transforms
 transform_train = transforms.Compose(
@@ -196,27 +210,28 @@ dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=DATA_BATC
 class XBlock(nn.Module):
 
     # initialization
-    def __init__(self, Ni, No, Fr, Fc, Sr, Sc, G):
+    def __init__(self, Ni, No, Fr, Fc, Sr, Sc, G, DS=False):
         # parent initialization
         super(XBlock, self).__init__()
 
         self.layers = nn.ModuleList([
             nn.Conv2d(Ni, No, (1, 1), stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(No),
+            nn.BatchNorm2d(No, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             nn.ReLU(),
             nn.Conv2d(No, No, (Fr, Fc), stride=(Sr, Sc), padding=1, bias=False, groups=G),
-            nn.BatchNorm2d(No),
+            nn.BatchNorm2d(No, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             nn.ReLU(),
             nn.Conv2d(No, No, (1, 1), stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(No),
+            nn.BatchNorm2d(No, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             nn.ReLU()
         ])
 
-        self.conv = nn.ModuleList([
-            nn.Conv2d(Ni, No, (1, 1), stride=(Sr, Sc), padding=0, bias=False),
-            nn.BatchNorm2d(No),
-            nn.ReLU()
-        ])
+        if DS:
+            self.conv = nn.ModuleList([
+                nn.Conv2d(Ni, No, (1, 1), stride=(Sr, Sc), padding=0, bias=False)
+            ])
+        else:
+            self.conv = nn.ModuleList()
         # operations needed to create a parameterized XBlock
 
     # forward path
@@ -229,7 +244,7 @@ class XBlock(nn.Module):
 
         for layer in self.conv:
             x = layer(x)
-        # return
+
         return y + x
 
 
@@ -240,12 +255,10 @@ class XBlock(nn.Module):
 ################################################################################
 
 # define
-class Model(nn.Module):
-
+class Model(nn.Module): 
     # initialization
     def __init__(self,
                  data_num_channels,
-                 head_output_channels,
                  stage_0_channels,
                  stage_0_blocks,
                  stage_1_channels,
@@ -261,44 +274,35 @@ class Model(nn.Module):
         G = 8
         # stem
         self.stem = nn.ModuleList([
-            nn.Conv2d(data_num_channels, head_output_channels, (3, 3), stride=(1, 1), padding=1, bias=False),
-            nn.BatchNorm2d(head_output_channels),
-            nn.ReLU()
+            nn.Conv2d(data_num_channels, stage_0_channels, (3, 3), stride=(1, 1), padding=1, bias=False)
         ])
 
         self.enc0 = nn.ModuleList()
-        self.enc0.append(XBlock(head_output_channels, stage_0_channels, 3, 3, 1, 1, G))
+        self.enc0.append(XBlock(stage_0_channels, stage_0_channels, 3, 3, 1, 1, G, False))
         for i in range(stage_0_blocks - 1):
             self.enc0.append(XBlock(stage_0_channels, stage_0_channels, 3, 3, 1, 1, G))
 
         self.enc1 = nn.ModuleList()
-        self.enc1.append(XBlock(stage_0_channels, stage_1_channels, 3, 3, 2, 2, G))
+        self.enc1.append(XBlock(stage_0_channels, stage_1_channels, 3, 3, 2, 2, G, True))
         for i in range(stage_1_blocks - 1):
             self.enc1.append(XBlock(stage_1_channels, stage_1_channels, 3, 3, 1, 1, G))
 
         self.enc2 = nn.ModuleList()
-        self.enc2.append(XBlock(stage_1_channels, stage_2_channels, 3, 3, 2, 2, G))
+        self.enc2.append(XBlock(stage_1_channels, stage_2_channels, 3, 3, 2, 2, G, True))
         for i in range(stage_2_blocks - 1):
             self.enc2.append(XBlock(stage_2_channels, stage_2_channels, 3, 3, 1, 1, G))
 
         self.enc3 = nn.ModuleList()
-        self.enc3.append(XBlock(stage_2_channels, stage_3_channels, 3, 3, 2, 2, G))
+        self.enc3.append(XBlock(stage_2_channels, stage_3_channels, 3, 3, 2, 2, G, True))
         for i in range(stage_3_blocks - 1):
             self.enc3.append(XBlock(stage_3_channels, stage_3_channels, 3, 3, 1, 1, G))
 
-        self.head = nn.ModuleList([
-            nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Flatten(),
-            nn.Linear(stage_3_channels, data_num_classes)
-        ])
-
-        self.output = nn.Softmax(dim=1)
-
-
+    
+        self.headpool = nn.AdaptiveAvgPool2d(output_size=1)
+        self.headfc = nn.Linear(stage_3_channels, data_num_classes, bias=True)
 
     # forward path
     def forward(self, x):
-        # add your code here
         # tie together the operations to create a modified RegNetX-200MF
         y = x
         for layer in self.stem:
@@ -316,21 +320,15 @@ class Model(nn.Module):
         for layer in self.enc3:
             y = layer(y)
 
-        for layer in self.head:
-            y = layer(y)
+        y = self.headpool(y)
+        y = y.view(y.size(0), -1)
+        y = self.headfc(y)
 
         # return 100 classes
-        return self.output(y)
-
-def weights_init(module):
-    print(module)
-    if isinstance(module, nn.Conv2d) or isinstance(module, nn.BatchNorm2d) or isinstance(module, nn.Linear):
-        nn.init.xavier_normal_(module.weight.data)
-        nn.init.xavier_normal_(module.weight.data)
+        return y
 
 # create
 model = Model(DATA_NUM_CHANNELS,
-              HEAD_OUTPUT_CHANNELS,
               STAGE_0_CHANNELS,
               STAGE_0_BLOCKS,
               STAGE_1_CHANNELS,
@@ -341,7 +339,6 @@ model = Model(DATA_NUM_CHANNELS,
               STAGE_3_BLOCKS,
               DATA_NUM_CLASSES)
 
-model.apply(weights_init)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # enable data parallelization for multi GPU systems
@@ -359,7 +356,10 @@ print('Using {0:d} GPU(s)'.format(torch.cuda.device_count()), flush=True)
 ################################################################################
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+if OPTIMIZER_NAME == 'Adam':
+  optimizer = optim.Adam(model.parameters(), lr=TRAINING_LR_MAX, betas=(0.9, 0.999), eps=1e-08, weight_decay=WEIGHT_DECAY, amsgrad=False)
+else:
+  optimizer = optim.SGD(model.parameters(), lr=TRAINING_LR_MAX,weight_decay=WEIGHT_DECAY, momentum=0.9, nesterov=True)
 
 ################################################################################
 #
@@ -367,32 +367,73 @@ optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 #
 ################################################################################
 
+def lr_schedule(epoch):
+    # linear warmup followed by cosine decay                                                                                                                                                                                            
+    if epoch < TRAINING_LR_INIT_EPOCHS:
+        lr = (TRAINING_LR_MAX - TRAINING_LR_INIT)*(float(epoch)/TRAINING_LR_INIT_EPOCHS) + TRAINING_LR_INIT
+    else:
+        lr = (TRAINING_LR_MAX - TRAINING_LR_FINAL)*max(0.0, math.cos(((float(epoch) - TRAINING_LR_INIT_EPOCHS)/(TRAINING_LR_FINAL_EPOCHS - 1.0))*(math.pi/2.0))) + TRAINING_LR_FINAL
+
+    return lr
+
+
 time.sleep(0.2)
-for epoch in range(NUM_EPOCHS):
+train_losses = []
+test_losses = []
+train_accuracy = []
+test_accuracy = []
+
+if FILE_LOAD:
+  checkpoint = torch.load(MODEL_PATH)
+  model.load_state_dict(checkpoint['model_state_dict'])
+  optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+  CURRENT_EPOCH = checkpoint['epoch']
+
+current_best_model = {
+    'epoch': CURRENT_EPOCH,
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+    'loss': float('inf')
+}
+
+
+
+for epoch in range(CURRENT_EPOCH, TRAINING_NUM_EPOCHS):
     train_loss = 0
     n = 0
     tq = tqdm(dataloader_train)
 
-    tq.set_description('Average Train Loss: {0: 5.6f}'.format(float('0')))
+    for g in optimizer.param_groups:
+      g['lr'] = lr_schedule(epoch)
+
+    it_str = 'Epoch {0: d}, lr: {1: 5.6f}, Average Train Loss: {2: 5.6f}'
+    tq.set_description(it_str.format(epoch + 1, optimizer.param_groups[0]['lr'], float(0)))
     model.train()
     for i, data in enumerate(tq):
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
-        outputs = model(inputs)
+        
         optimizer.zero_grad()
+
+        outputs = model(inputs)
         loss = criterion(outputs, labels)
+        
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item() * len(inputs)
         n += len(inputs)
-
-        tq.set_description('Average Train Loss: {0:5.6f}'.format(train_loss / n))
+        tq.set_description(it_str.format(epoch + 1, optimizer.param_groups[0]['lr'], train_loss / n))
 
     model.eval()
+
+    test_len = 0
+    test_correct = 0
+    test_loss = 0
+    train_len = 0
+    train_correct = 0
+    train_loss = 0
     with torch.no_grad():
-        test_len = 0
-        test_correct = 0
         for data in dataloader_test:
             inputs, labels = data
             inputs, labels = inputs.to(device), labels.to(device)
@@ -401,12 +442,50 @@ for epoch in range(NUM_EPOCHS):
             _, predicted = torch.max(outputs.data, 1)
             test_len += len(labels)
             test_correct += (predicted == labels).sum().item()
-    print('Test Accuracy: {0:6.2f}%'.format(test_correct / test_len * 100))
+            loss = criterion(outputs, labels)
+            test_loss += loss.item() * len(labels)
+        for data in dataloader_train:
+            inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+
+            _, predicted = torch.max(outputs.data, 1)
+            train_len += len(labels)
+            train_correct += (predicted == labels).sum().item()
+            loss = criterion(outputs, labels)
+            train_loss += loss.item() * len(labels)
+
+    train_losses.append(train_loss / train_len)
+    test_losses.append(test_loss / test_len)
+    train_accuracy.append(train_correct / train_len * 100)
+    test_accuracy.append(test_correct / test_len * 100)
+
+    if test_loss < current_best_model['loss']:
+          current_best_model = {
+              'epoch': epoch + 1,
+              'model_state_dict': model.state_dict(),
+              'optimizer_state_dict': optimizer.state_dict(),
+              'loss': test_loss
+          }
+
+
+    print('Train/Test Accuracy: {0:5.2f}%/{1:5.2f}%'.format(train_correct / train_len * 100, test_correct / test_len * 100))
+    print('Train/Test Loss: {0:4.2f}/{1:4.2f}'.format(train_loss / train_len, test_loss / test_len))
     time.sleep(0.2)
 
+torch.save(current_best_model, MODEL_PATH)
 
+epoch_list = list(range(TRAINING_NUM_EPOCHS))
+plt.plot(epoch_list, train_losses, label='Avg Train Loss')
+plt.plot(epoch_list, test_losses, label='Avg Test Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Average Loss (Cross Entropy)')
+plt.legend()
+plt.show()
 
-
-# add your code here
-# perform network training, validation and checkpoint saving
-# see previous examples in the Code directory
+plt.plot(epoch_list, train_accuracy, label='Train Accuracy')
+plt.plot(epoch_list, test_accuracy, label='Test Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
