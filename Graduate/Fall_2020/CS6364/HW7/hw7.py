@@ -1,3 +1,5 @@
+#%%
+
 # Made by Daniel Crawford
 # Student Net ID: dsc160130
 # Course: CS6364 - Artificial Intelligence
@@ -166,7 +168,7 @@ class Q3Model(nn.Module):
         super(Q3Model, self).__init__()
 
         self.cnn_layers = nn.ModuleList([
-            nn.Conv2d(1, 6, kernel_size=(5,5), stride=(1,1), padding=(0,0)),
+            nn.Conv2d(1, 6, kernel_size=(5,5), stride=(1,1), padding=(2,2)),
             nn.AvgPool2d((2,2), stride=(2,2)),
             nn.Conv2d(6, 16, kernel_size=(5,5), stride=(1,1), padding=(0,0)),
             nn.AvgPool2d((2,2), stride=(2,2)),
@@ -174,7 +176,7 @@ class Q3Model(nn.Module):
 
         self.linear_layers = nn.ModuleList([
             nn.Flatten(),
-            nn.Linear(256, 120),
+            nn.Linear(16 * 5 * 5, 120),
             nn.Linear(120, 84),
             nn.Linear(84, 10),
             nn.Softmax(dim=1)
@@ -242,13 +244,15 @@ def train_model(model, optimizer, criterion, device, train_loader, test_loader, 
             _, predicted = torch.max(outputs.data, 1)
             valid_len += len(labels)
             valid_correct += (predicted == labels).sum().item()
-        print('Train Accuracy {0: 3.2f}, Train Average Loss: {1:5.6f}\n'
-              'Valid Accuracy: {2:3.2f}, Valid Average Loss: {3:5.6f}'.format(train_correct / train_len * 100,
-                                                                              train_loss / train_len,
-                                                                              valid_correct / valid_len * 100,
-                                                                              valid_loss / valid_len))
+        # print('Train Accuracy {0: 3.2f}, Train Average Loss: {1:5.6f}\n'
+        #       'Valid Accuracy: {2:3.2f}, Valid Average Loss: {3:5.6f}'.format(train_correct / train_len * 100,
+        #                                                                       train_loss / train_len,
+        #                                                                       valid_correct / valid_len * 100,
+        #                                                                       valid_loss / valid_len))
         valid_losses.append(valid_loss / valid_len)
         time.sleep(0.1)
+    print('Valid Accuracy: ', valid_correct / valid_len * 100)
+    print('Train Accuracy: ', train_correct / train_len * 100)
 
     test_predictions = []
     for batch, labels in test_loader:
@@ -280,13 +284,14 @@ def q2():
     criterion = nn.CrossEntropyLoss()
     train_losses, valid_losses, test_predictions = train_model(model, optimizer, criterion, device, train_loader,
                                                                test_loader, valid_loader, num_epochs)
-    print('Test Accuracy: ', np.sum(np.array(test_predictions) == test_labels.numpy()) / len(test_predictions))
+    print('Test Accuracy: ', np.sum(np.array(test_predictions) == test_labels.numpy()) / len(test_predictions) * 100)
     epochs_list = list(range(num_epochs))
-    plt.plot(epochs_list, train_losses, epochs_list, valid_losses)
+    plt.plot(epochs_list, train_losses, label='Training Loss')
+    plt.plot(epochs_list, valid_losses, label='Validation Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Average Loss (Cross Entropy)')
+    plt.legend()
     plt.show()
-
 
 
 def q3():
@@ -295,19 +300,23 @@ def q3():
     criterion = nn.CrossEntropyLoss()
     train_losses, valid_losses, test_predictions = train_model(model, optimizer, criterion, device, train_loader,
                                                                test_loader, valid_loader, num_epochs)
-    print('Test Accuracy: ', np.sum(np.array(test_predictions) == test_labels.numpy()) / len(test_predictions))
+    print('Test Accuracy: ', np.sum(np.array(test_predictions) == test_labels.numpy()) / len(test_predictions) * 100)
     epochs_list = list(range(num_epochs))
-    plt.plot(epochs_list, train_losses, epochs_list, valid_losses)
+    plt.plot(epochs_list, train_losses, label='Training Loss')
+    plt.plot(epochs_list, valid_losses, label='Validation Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Average Loss (Cross Entropy)')
+    plt.legend()
     plt.show()
 
 
 #%%
+
 print('QUESTION 1: ')
 q1()
 
 #%%
+
 print('Data visualization: ')
 fig, ax = plt.subplots(3, 3, figsize=(data_rows, data_cols))
 for i in range(9):
@@ -318,9 +327,11 @@ for i in range(9):
 plt.show()
 
 #%%
+
 print('QUESTION 2: ')
 q2()
 
 #%%
+
 print('QUESTION 3: ')
 q3()
