@@ -100,9 +100,8 @@ class GridLearner2D:
 
 
 class DeepGridLearner2D(nn.Module):
-    def __init__(self, device, num_actions):
+    def __init__(self, num_actions):
         super(DeepGridLearner2D, self).__init__()
-        self.device = device
         self.layers = nn.ModuleList([
             nn.Linear(2, 32),
             nn.ReLU(),
@@ -114,7 +113,7 @@ class DeepGridLearner2D(nn.Module):
         ])
 
     def forward(self, x):
-        y = torch.from_numpy(np.array([x])).float().to(self.device)
+        y = x
 
         for layer in self.layers:
             y = layer(y)
@@ -132,39 +131,34 @@ def q1():
 def q2():
     game = GridGame2D(grid)
     num_epochs = 1000
+    param_update = 5
     gamma = DISCOUNT_FACTOR
     r = NEGATIVE_REWARD
-    eps = 1e-5
+    transition_prob = 1e-1
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = DeepGridLearner2D(device, game.num_actions).to(device)
+    model = DeepGridLearner2D(game.num_actions).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-    s = [np.random.randint(0, game.x), np.random.randint(0, game.y)]
+    s = (np.random.randint(0, game.x), np.random.randint(0, game.y))
 
     model.train()
-    prev_loss = float('inf')
+    optimizer.zero_grad()
     for epoch in range(num_epochs):
-        outputs = model(s)
+
+        outputs = model(torch.from_numpy(np.array([s])).float().to(device))
         q_0, a = torch.max(outputs, 1)
         s = game.action(s[0], s[1], int(a[0].cpu()))
-        q_1, _ = torch.max(model(s).data, 1)
         if s in game.terminal_states:
             y_i = torch.Tensor([r]).to(device)
-            s = [np.random.randint(0, game.x), np.random.randint(0, game.y)]
+            s = (np.random.randint(0, game.x), np.random.randint(0, game.y))
         else:
+            q_1, _ = torch.max(model(torch.from_numpy(np.array([s])).float().to(device)).data, 1)
             y_i = r + gamma * q_1
 
-        print(q_0, q_1)
-        optimizer.zero_grad()
         loss = criterion(q_0, y_i)
         loss.backward()
-        optimizer.step()
-        # if prev_loss - loss.item() < eps:
-        #     break
-        # else:
-        #     prev_loss = loss.item()
-
-        print(loss.item())
-        print(s)
+        if (epoch + 1) % param_update == 0:
+            optimizer.step()
+            optimizer.zero_grad()
 
 q2()
