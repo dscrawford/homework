@@ -130,35 +130,56 @@ def q1():
 
 def q2():
     game = GridGame2D(grid)
-    num_epochs = 1000
-    param_update = 5
+    num_epochs = 200
     gamma = DISCOUNT_FACTOR
     r = NEGATIVE_REWARD
-    transition_prob = 1e-1
+    sequence_threshold = 5
+    BATCH_SIZE = 512
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = DeepGridLearner2D(game.num_actions).to(device)
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-    s = (np.random.randint(0, game.x), np.random.randint(0, game.y))
+    criterion = nn.SmoothL1Loss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+    s = np.transpose(np.vstack([np.random.randint(0, game.x, BATCH_SIZE), np.random.randint(0, game.y, BATCH_SIZE)]))
+    sequence_count = np.zeros(len(s))
 
     model.train()
     optimizer.zero_grad()
     for epoch in range(num_epochs):
-
-        outputs = model(torch.from_numpy(np.array([s])).float().to(device))
+        outputs = model(torch.from_numpy(s).float().to(device))
         q_0, a = torch.max(outputs, 1)
-        s = game.action(s[0], s[1], int(a[0].cpu()))
-        if s in game.terminal_states:
-            y_i = torch.Tensor([r]).to(device)
-            s = (np.random.randint(0, game.x), np.random.randint(0, game.y))
-        else:
-            q_1, _ = torch.max(model(torch.from_numpy(np.array([s])).float().to(device)).data, 1)
-            y_i = r + gamma * q_1
+        s_n = np.array([game.action(s[i][0], s[i][1], int(a[i].cpu())) for i in range(len(a))])
 
-        loss = criterion(q_0, y_i)
+        y = []
+        for i in range(len(s_n)):
+            if tuple(s_n[i]) in game.terminal_states:
+                y_i = r
+                s_n[i] = (np.random.randint(0, game.x), np.random.randint(0, game.y))
+                sequence_count[i] = 0
+            else:
+                q_1, _ = torch.max(model(torch.from_numpy(np.array([s_n[i]])).float().to(device)), 1)
+                y_i = (r + gamma * float(q_1.cpu()))
+            y.append(y_i)
+        y = torch.Tensor(y).float().to(device)
+
+        loss = criterion(q_0, y)
         loss.backward()
-        if (epoch + 1) % param_update == 0:
-            optimizer.step()
-            optimizer.zero_grad()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        sequence_count += 1
+        for i in range(len(s_n)):
+            if sequence_count[i] > sequence_threshold:
+                s_n[i] = (np.random.randint(0, game.x), np.random.randint(0, game.y))
+                sequence_count[i] = 0
+        s = s_n
+
+        print('EPOCH ', epoch + 1, ', Loss: ', loss.item())
+
+    problems = [[0, 1], [1, 0], [4, 3]]
+    for problem in problems:
+        _, a = torch.max(model(torch.from_numpy(np.array([problem])).float().to(device)), 1)
+        print(problem, 'action: ', game.get_action_str(int(a.cpu())))
+
 
 q2()
