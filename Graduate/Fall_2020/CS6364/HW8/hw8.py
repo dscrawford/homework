@@ -140,7 +140,15 @@ def q2():
     model = DeepGridLearner2D(game.num_actions).to(device)
     criterion = nn.SmoothL1Loss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-    s = np.transpose(np.vstack([np.random.randint(0, game.x, BATCH_SIZE), np.random.randint(0, game.y, BATCH_SIZE)]))
+    s_0 = []
+    for i in range(BATCH_SIZE):
+        while True:
+            x, y = np.random.randint(0, game.x), np.random.randint(0, game.y)
+            if (x, y) not in game.terminal_states:
+                break
+        s_0.append([x,y])
+        
+    s = np.array(s_0)
     sequence_count = np.zeros(len(s))
 
     model.train()
