@@ -121,6 +121,13 @@ class DeepGridLearner2D(nn.Module):
         return y
 
 
+def generate_coordinates(game):
+    x, y = np.random.randint(0, game.x), np.random.randint(0, game.y)
+    # while (x, y) in game.terminal_states:
+    #     x, y = np.random.randint(0, game.x), np.random.randint(0, game.y)
+    return x, y
+
+
 def q1():
     game = GridGame2D(grid)
     grid_learner = GridLearner2D(DISCOUNT_FACTOR, NEGATIVE_REWARD)
@@ -130,28 +137,24 @@ def q1():
 
 def q2():
     game = GridGame2D(grid)
-    num_epochs = 200
+    num_epochs = 1000
     gamma = DISCOUNT_FACTOR
     r = NEGATIVE_REWARD
+    target_update = 10
+    BATCH_SIZE = 32
     sequence_threshold = 5
-    BATCH_SIZE = 512
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = DeepGridLearner2D(game.num_actions).to(device)
+    target_model = DeepGridLearner2D(game.num_actions).to(device)
+    target_model.load_state_dict(model.state_dict())
     criterion = nn.SmoothL1Loss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-    s_0 = []
-    for i in range(BATCH_SIZE):
-        while True:
-            x, y = np.random.randint(0, game.x), np.random.randint(0, game.y)
-            if (x, y) not in game.terminal_states:
-                break
-        s_0.append([x,y])
-        
-    s = np.array(s_0)
-    sequence_count = np.zeros(len(s))
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    s = np.vstack([generate_coordinates(game) for _ in range(BATCH_SIZE)])
+    sequence_count = np.zeros(BATCH_SIZE)
 
     model.train()
+    target_model.eval()
     optimizer.zero_grad()
     for epoch in range(num_epochs):
         outputs = model(torch.from_numpy(s).float().to(device))
@@ -162,31 +165,40 @@ def q2():
         for i in range(len(s_n)):
             if tuple(s_n[i]) in game.terminal_states:
                 y_i = r
-                s_n[i] = (np.random.randint(0, game.x), np.random.randint(0, game.y))
+                s_n[i] = generate_coordinates(game)
                 sequence_count[i] = 0
             else:
-                q_1, _ = torch.max(model(torch.from_numpy(np.array([s_n[i]])).float().to(device)), 1)
+                q_1, _ = torch.max(target_model(torch.from_numpy(np.array([s_n[i]])).float().to(device)), 1)
                 y_i = (r + gamma * float(q_1.cpu()))
             y.append(y_i)
+
         y = torch.Tensor(y).float().to(device)
 
+        optimizer.zero_grad()
         loss = criterion(q_0, y)
         loss.backward()
         optimizer.step()
-        optimizer.zero_grad()
 
         sequence_count += 1
         for i in range(len(s_n)):
             if sequence_count[i] > sequence_threshold:
-                s_n[i] = (np.random.randint(0, game.x), np.random.randint(0, game.y))
+                s_n[i] = np.random.randint(0, game.x), np.random.randint(0, game.y)
                 sequence_count[i] = 0
+
+        if (epoch + 1) % target_update == 0:
+            target_model.load_state_dict(model.state_dict())
+            s_n = np.vstack([generate_coordinates(game) for _ in range(BATCH_SIZE)])
+            sequence_count = np.zeros(BATCH_SIZE)
+
         s = s_n
 
         print('EPOCH ', epoch + 1, ', Loss: ', loss.item())
 
-    problems = [[0, 1], [1, 0], [4, 3]]
+    problems = [[0, 0], [0, 1], [1, 0], [4, 3], [3,4]]
     for problem in problems:
-        _, a = torch.max(model(torch.from_numpy(np.array([problem])).float().to(device)), 1)
+        output = model(torch.from_numpy(np.array([problem])).float().to(device))
+        print(output)
+        q, a = torch.max(model(torch.from_numpy(np.array([problem])).float().to(device)), 1)
         print(problem, 'action: ', game.get_action_str(int(a.cpu())))
 
 
