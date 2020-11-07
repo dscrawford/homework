@@ -120,11 +120,25 @@ class DeepGridLearner2D(nn.Module):
 
         return y
 
+class ReplayMemory():
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+
+    def push(self, game, x, y, action):
+        newX, newY = game.action(x, y, action)
+        if self.capacity < len(self.memory):
+            return
+        self.memory.append([x, y, action, newX, newY])
+
+    def sample(self, size):
+        return np.array(self.memory)[np.random.randint(0, len(self.memory), size)]
+
 
 def generate_coordinates(game):
     x, y = np.random.randint(0, game.x), np.random.randint(0, game.y)
-    # while (x, y) in game.terminal_states:
-    #     x, y = np.random.randint(0, game.x), np.random.randint(0, game.y)
+    while (x, y) in game.terminal_states:
+        x, y = np.random.randint(0, game.x), np.random.randint(0, game.y)
     return x, y
 
 
@@ -137,69 +151,141 @@ def q1():
 
 def q2():
     game = GridGame2D(grid)
-    num_epochs = 1000
+    num_episodes = 1000
     gamma = DISCOUNT_FACTOR
     r = NEGATIVE_REWARD
-    target_update = 10
-    BATCH_SIZE = 32
-    sequence_threshold = 5
-
+    sequence_limit = 5
+    target_update = 20
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = DeepGridLearner2D(game.num_actions).to(device)
+
+    policy_model = DeepGridLearner2D(game.num_actions).to(device)
     target_model = DeepGridLearner2D(game.num_actions).to(device)
-    target_model.load_state_dict(model.state_dict())
-    criterion = nn.SmoothL1Loss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-    s = np.vstack([generate_coordinates(game) for _ in range(BATCH_SIZE)])
-    sequence_count = np.zeros(BATCH_SIZE)
-
-    model.train()
     target_model.eval()
-    optimizer.zero_grad()
-    for epoch in range(num_epochs):
-        outputs = model(torch.from_numpy(s).float().to(device))
-        q_0, a = torch.max(outputs, 1)
-        s_n = np.array([game.action(s[i][0], s[i][1], int(a[i].cpu())) for i in range(len(a))])
+    target_model.load_state_dict(policy_model.state_dict())
 
-        y = []
-        for i in range(len(s_n)):
-            if tuple(s_n[i]) in game.terminal_states:
-                y_i = r
-                s_n[i] = generate_coordinates(game)
-                sequence_count[i] = 0
+    criterion = nn.SmoothL1Loss()
+    optimizer = torch.optim.SGD(policy_model.parameters(), lr=0.01)
+
+    for episode in range(num_episodes):
+        s = torch.Tensor([generate_coordinates(game)]).float().to(device)
+        in_terminal = False
+        sequence_i = 0
+
+        while not in_terminal:
+            q_0, action = policy_model(s).max(1)
+            newX, newY = game.action(int(s[0][0].cpu()), int(s[0][1].cpu()), int(action.cpu()))
+            in_terminal = (newX, newY) in game.terminal_states
+            reward = torch.Tensor([r]).float().to(device)
+            expected_value = reward
+            if not in_terminal:
+                expected_value += target_model(
+                    torch.Tensor([[newX, newY]]).float().to(device)
+                ).max().squeeze().to(device) * gamma
+
+            loss = criterion(q_0, expected_value)
+            optimizer.zero_grad()
+            loss.backward()
+            for param in policy_model.parameters():
+                param.grad.data.clamp(-1, 1)
+            optimizer.step()
+
+            if (newX, newY) in game.terminal_states:
+                in_terminal = True
+
+            sequence_i += 1
+            if sequence_i >= sequence_limit:
+                x, y = generate_coordinates(game)
+                s = torch.Tensor(
+                    [[x, y]]
+                ).float().to(device)
+                sequence_i = 0
             else:
-                q_1, _ = torch.max(target_model(torch.from_numpy(np.array([s_n[i]])).float().to(device)), 1)
-                y_i = (r + gamma * float(q_1.cpu()))
-            y.append(y_i)
+                s = torch.Tensor(
+                    [[newX, newY]]
+                ).float().to(device)
 
-        y = torch.Tensor(y).float().to(device)
+        if (episode + 1) % target_update == 0:
+            target_model.load_state_dict(policy_model.state_dict())
+        # print('EPISODE ', episode + 1, ', Loss: ', loss.item())
 
-        optimizer.zero_grad()
-        loss = criterion(q_0, y)
-        loss.backward()
-        optimizer.step()
-
-        sequence_count += 1
-        for i in range(len(s_n)):
-            if sequence_count[i] > sequence_threshold:
-                s_n[i] = np.random.randint(0, game.x), np.random.randint(0, game.y)
-                sequence_count[i] = 0
-
-        if (epoch + 1) % target_update == 0:
-            target_model.load_state_dict(model.state_dict())
-            s_n = np.vstack([generate_coordinates(game) for _ in range(BATCH_SIZE)])
-            sequence_count = np.zeros(BATCH_SIZE)
-
-        s = s_n
-
-        print('EPOCH ', epoch + 1, ', Loss: ', loss.item())
-
-    problems = [[0, 0], [0, 1], [1, 0], [4, 3], [3,4]]
-    for problem in problems:
-        output = model(torch.from_numpy(np.array([problem])).float().to(device))
-        print(output)
-        q, a = torch.max(model(torch.from_numpy(np.array([problem])).float().to(device)), 1)
-        print(problem, 'action: ', game.get_action_str(int(a.cpu())))
+    for y in range(game.y):
+        for x in range(game.x):
+            output = policy_model(torch.from_numpy(np.array([[x, y]])).float().to(device))
+            q, a = torch.max(output, 1)
+            print('\t', game.get_action_str(int(a.cpu())), [x, y], end='')
+        print('\n')
 
 
-q2()
+def q3():
+    game = GridGame2D(grid)
+    num_episodes = 100
+    gamma = DISCOUNT_FACTOR
+    r = NEGATIVE_REWARD
+    sequence_limit = 5
+    target_update = 10
+    batch_size = 512
+    eps = 1e-2
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    replay = ReplayMemory(10000)
+
+    policy_model = DeepGridLearner2D(game.num_actions).to(device)
+    target_model = DeepGridLearner2D(game.num_actions).to(device)
+    target_model.eval()
+    target_model.load_state_dict(policy_model.state_dict())
+
+    criterion = nn.SmoothL1Loss()
+    optimizer = torch.optim.SGD(policy_model.parameters(), lr=0.01)
+
+    for episode in range(num_episodes):
+        x, y = generate_coordinates(game)
+        while (x, y) not in game.terminal_states:
+            s = torch.Tensor([[x, y]]).float().to(device)
+            sequence_i = 0
+            with torch.no_grad():
+                if np.random.uniform() > eps:
+                    _, action = policy_model(s).max(1)
+                else:
+                    action = torch.Tensor([np.random.randint(game.num_actions)]).to(device)
+            newX, newY = game.action(int(s[0][0].cpu()), int(s[0][1].cpu()), int(action.cpu()))
+            replay.push(game, x, y, int(action.cpu()))
+
+            batch = replay.sample(batch_size)
+
+            states = torch.Tensor(batch[:, 0:2]).float().to(device)
+            actions = torch.Tensor(batch[:, 2:3]).view(1, batch_size).type(torch.int64).to(device)
+            new_states = torch.Tensor(batch[:, 3:5]).to(device)
+
+            q_0 = policy_model(states).gather(1, actions).squeeze()
+
+            expected_value = torch.full((batch_size, ), r, dtype=torch.float64).to(device)
+            non_terminal_mask = torch.Tensor(
+                [(new_states[i][0], new_states[i][1]) not in game.terminal_states for i in range(batch_size)]
+            ).bool().to(device)
+            expected_value[non_terminal_mask] += target_model(new_states[non_terminal_mask]).max().squeeze() * gamma
+            loss = criterion(q_0, expected_value)
+            optimizer.zero_grad()
+            loss.backward()
+            for param in policy_model.parameters():
+                param.grad.data.clamp(-1, 1)
+            optimizer.step()
+
+            sequence_i += 1
+            if sequence_i >= sequence_limit:
+                x, y = generate_coordinates(game)
+            else:
+                x, y = newX, newY
+
+            print(x, y)
+
+        if (episode + 1) % target_update == 0:
+            target_model.load_state_dict(policy_model.state_dict())
+        # print('EPISODE ', episode + 1, ', Loss: ', loss.item())
+
+    for y in range(game.y):
+        for x in range(game.x):
+            output = policy_model(torch.from_numpy(np.array([[x, y]])).float().to(device))
+            q, a = torch.max(output, 1)
+            print('\t', game.get_action_str(int(a.cpu())), [x, y], end='')
+        print('\n')
+
+q3()
