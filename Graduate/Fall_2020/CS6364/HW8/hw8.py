@@ -1,3 +1,5 @@
+#%%
+
 # Made by Daniel Crawford
 # Student Net ID: dsc160130
 # Course: CS6364 - Artificial Intelligence
@@ -5,6 +7,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
+
+from tqdm import tqdm
 
 # HYPERPARAMETERS
 DISCOUNT_FACTOR = 0.7
@@ -120,15 +124,17 @@ class DeepGridLearner2D(nn.Module):
 
         return y
 
-class ReplayMemory():
+class ReplayMemory:
     def __init__(self, capacity):
         self.capacity = capacity
         self.memory = []
+        self.position = 0
 
     def push(self, game, x, y, action):
         newX, newY = game.action(x, y, action)
         if self.capacity < len(self.memory):
-            return
+            self.memory[self.position] = [x, y, action, newX, newY]
+            self.position = (self.position + 1) % self.capacity
         self.memory.append([x, y, action, newX, newY])
 
     def sample(self, size):
@@ -146,7 +152,22 @@ def q1():
     game = GridGame2D(grid)
     grid_learner = GridLearner2D(DISCOUNT_FACTOR, NEGATIVE_REWARD)
     grid_learner.train(game)
-    grid_learner.get_sequence(game, grid_learner.Q, 2, 2)
+    for y in range(game.y):
+        for x in range(game.x):
+            index = x + game.x * y
+            max_points = np.ndarray.flatten(np.argwhere(grid_learner.Q[index] == np.max(grid_learner.Q[index])))
+            action_str = ''
+            for action in max_points:
+                if action == 0:
+                    action_str += '→'
+                elif action == 1:
+                    action_str += '←'
+                elif action == 2:
+                    action_str += '↑'
+                elif action == 3:
+                    action_str += '↓'
+            print(action_str, end='\t')
+        print('\n')
 
 
 def q2():
@@ -155,7 +176,7 @@ def q2():
     gamma = DISCOUNT_FACTOR
     r = NEGATIVE_REWARD
     sequence_limit = 5
-    target_update = 20
+    target_update = 8
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     policy_model = DeepGridLearner2D(game.num_actions).to(device)
@@ -206,27 +227,32 @@ def q2():
 
         if (episode + 1) % target_update == 0:
             target_model.load_state_dict(policy_model.state_dict())
-        # print('EPISODE ', episode + 1, ', Loss: ', loss.item())
 
-    for y in range(game.y):
-        for x in range(game.x):
-            output = policy_model(torch.from_numpy(np.array([[x, y]])).float().to(device))
-            q, a = torch.max(output, 1)
-            print('\t', game.get_action_str(int(a.cpu())), [x, y], end='')
-        print('\n')
+    with torch.no_grad():
+        for y in range(game.y):
+            for x in range(game.x):
+                output = policy_model(torch.from_numpy(np.array([[x, y]])).float().to(device)).cpu().numpy()
+                max_points = np.ndarray.flatten(np.argwhere(output == np.max(output)))
+                action_str = ''
+                for action in max_points:
+                    if action == 0:
+                        action_str += '→'
+                    elif action == 1:
+                        action_str += '←'
+                    elif action == 2:
+                        action_str += '↑'
+                    elif action == 3:
+                        action_str += '↓'
+                print(action_str, end='\t')
+            print('\n')
 
 
-def q3():
+def q3(num_episodes=100, sequence_limit=5, target_update=10, batch_size=32, eps=1e-2):
     game = GridGame2D(grid)
-    num_episodes = 100
     gamma = DISCOUNT_FACTOR
     r = NEGATIVE_REWARD
-    sequence_limit = 5
-    target_update = 10
-    batch_size = 512
-    eps = 1e-2
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    replay = ReplayMemory(10000)
+    replay = ReplayMemory(1000)
 
     policy_model = DeepGridLearner2D(game.num_actions).to(device)
     target_model = DeepGridLearner2D(game.num_actions).to(device)
@@ -234,58 +260,67 @@ def q3():
     target_model.load_state_dict(policy_model.state_dict())
 
     criterion = nn.SmoothL1Loss()
-    optimizer = torch.optim.SGD(policy_model.parameters(), lr=0.01)
+    optimizer = torch.optim.SGD(policy_model.parameters(), lr=0.01, momentum=0.9)
 
-    for episode in range(num_episodes):
+    tq = tqdm(range(num_episodes))
+
+    for episode in tq:
         x, y = generate_coordinates(game)
+        sequence_i = 0
         while (x, y) not in game.terminal_states:
+            sequence_i += 1
             s = torch.Tensor([[x, y]]).float().to(device)
-            sequence_i = 0
             with torch.no_grad():
-                if np.random.uniform() > eps:
+                if np.random.uniform() > eps and sequence_i < sequence_limit:
                     _, action = policy_model(s).max(1)
+                    action = int(action.cpu())
                 else:
-                    action = torch.Tensor([np.random.randint(game.num_actions)]).to(device)
-            newX, newY = game.action(int(s[0][0].cpu()), int(s[0][1].cpu()), int(action.cpu()))
-            replay.push(game, x, y, int(action.cpu()))
+                    sequence_i = 0
+                    action = np.random.randint(game.num_actions)
+            newX, newY = game.action(x, y, action)
+
+            replay.push(game, x, y, action)
 
             batch = replay.sample(batch_size)
 
             states = torch.Tensor(batch[:, 0:2]).float().to(device)
-            actions = torch.Tensor(batch[:, 2:3]).view(1, batch_size).type(torch.int64).to(device)
-            new_states = torch.Tensor(batch[:, 3:5]).to(device)
+            actions = torch.Tensor(batch[:, 2:3]).view(batch_size, 1).type(torch.int64).to(device)
+            new_states = torch.Tensor(batch[:, 3:5]).float().to(device)
 
-            q_0 = policy_model(states).gather(1, actions).squeeze()
+            q_0 = policy_model(states).gather(1, actions)
 
             expected_value = torch.full((batch_size, ), r, dtype=torch.float64).to(device)
             non_terminal_mask = torch.Tensor(
-                [(new_states[i][0], new_states[i][1]) not in game.terminal_states for i in range(batch_size)]
+                [(int(new_states[i][0].cpu()), int(new_states[i][1].cpu())) not in game.terminal_states for i in range(batch_size)]
             ).bool().to(device)
-            expected_value[non_terminal_mask] += target_model(new_states[non_terminal_mask]).max().squeeze() * gamma
-            loss = criterion(q_0, expected_value)
+            expected_value[non_terminal_mask] += target_model(new_states[non_terminal_mask]).max(1)[0] * gamma
+
             optimizer.zero_grad()
+            loss = criterion(q_0, expected_value.unsqueeze(1))
             loss.backward()
-            for param in policy_model.parameters():
-                param.grad.data.clamp(-1, 1)
             optimizer.step()
 
-            sequence_i += 1
-            if sequence_i >= sequence_limit:
-                x, y = generate_coordinates(game)
-            else:
-                x, y = newX, newY
-
-            print(x, y)
-
+            x, y = newX, newY
         if (episode + 1) % target_update == 0:
             target_model.load_state_dict(policy_model.state_dict())
-        # print('EPISODE ', episode + 1, ', Loss: ', loss.item())
 
-    for y in range(game.y):
-        for x in range(game.x):
-            output = policy_model(torch.from_numpy(np.array([[x, y]])).float().to(device))
-            q, a = torch.max(output, 1)
-            print('\t', game.get_action_str(int(a.cpu())), [x, y], end='')
-        print('\n')
+    with torch.no_grad():
+        for y in range(game.y):
+            for x in range(game.x):
+                output = policy_model(torch.from_numpy(np.array([[x, y]])).float().to(device)).cpu().numpy()
+                output = np.ndarray.flatten(output)
+                max_points = np.ndarray.flatten(np.argwhere(output == np.max(output)))
+                action_str = ''
+                for action in max_points:
+                    if action == 0:
+                        action_str += '→'
+                    elif action == 1:
+                        action_str += '←'
+                    elif action == 2:
+                        action_str += '↑'
+                    elif action == 3:
+                        action_str += '↓'
+                print(action_str, end='\t')
+            print('\n')
 
-q3()
+q3(200, 10, 10, 16, 1e-2)
