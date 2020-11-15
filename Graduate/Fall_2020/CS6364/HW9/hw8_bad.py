@@ -141,13 +141,15 @@ Transition = namedtuple("Transition", ['y', 'x', 'action', 'reward', 'newY', 'ne
 def init_weights_0(m):
     if isinstance(m, nn.Linear):
         m.weight.data[:] = 0
-        m.bias.data[:] = 0
+        if m.bias is not None:
+            m.bias.data[:] = 0
 
 def reinforce(game, policy_model, target_model, target_criterion, policy_optimizer, target_optimizer,
               device, num_episodes=100, gamma=DISCOUNT_FACTOR, seq_limit=float('inf')):
     # policy_model.apply(init_weights_0)
     # target_model.apply(init_weights_0)
     input_size = game.N
+    policy_criterion = nn.CrossEntropyLoss()
     for episode in range(num_episodes):
         game.reset()
         # init episode
@@ -160,7 +162,6 @@ def reinforce(game, policy_model, target_model, target_criterion, policy_optimiz
             for t in count():
                 state = torch.Tensor(game.get_one_hot_pos(y, x)).view(1, input_size).float().to(device)
                 output = F.softmax(policy_model(state), dim=1).squeeze().cpu().numpy()
-
                 # Choose best action
                 action = np.random.choice(np.arange(len(output)), p=output)
 
@@ -178,27 +179,38 @@ def reinforce(game, policy_model, target_model, target_criterion, policy_optimiz
         episode_reward = sum([t.reward for t in episode_info])
         episode_length = len(episode_info)
         print('EPISODE ', episode + 1, ' reward: ', episode_reward, ', length: ', episode_length, sep='')
+
         policy_model.train()
         target_model.train()
+        for t, transition in enumerate(episode_info[:-1]):
+            state = torch.Tensor(game.get_one_hot_pos(transition.y, transition.x)).view(1, input_size).float().to(device)
+            baseline = target_model(state).squeeze()
+            pred_return = F.softmax(policy_model(state), dim=1)
+            # Get the expected value at this current state
+            total_return = sum(gamma ** (i - t - 1) * episode_info[i].reward for i in range(t+1, len(episode_info)))
+            picked_action = pred_return.gather(1, torch.Tensor([[transition.action]]).type(torch.int64).to(device))
 
-        states = [game.get_one_hot_pos(transition.y, transition.x) for transition in episode_info]
-        actions = [transition.action for transition in episode_info]
-        reward_returns = [sum(gamma**i * s.reward for i, s in enumerate(episode_info[t:])) for t in range(len(episode_info))]
-        states = torch.FloatTensor(states).to(device)
-        actions = torch.LongTensor(actions).view(1, len(actions)).to(device)
-        reward_returns = torch.FloatTensor(reward_returns).to(device)
-        likelihoods = F.softmax(policy_model(states), dim=1)
-        print(likelihoods)
-        selected_likelihoods = likelihoods.gather(1, actions)
-        print(selected_likelihoods)
-        print(actions)
+            # Get a baseline value for transition state
+            advantage = total_return - float(baseline.cpu())
 
-        policy_optimizer.zero_grad()
-        loss = -torch.log(selected_likelihoods) * reward_returns
-        loss = loss.sum()
-        loss.backward()
-        policy_optimizer.step()
+            # Update policy model
+            policy_optimizer.zero_grad()
+            policy_loss = -torch.log(picked_action) * advantage
+            policy_loss.backward()
+            # for param in policy_model.parameters():
+            #     print(param.data)
+            policy_optimizer.step()
+            # print(picked_action)
+            # print(transition.action)
+            # return
 
+            # Update target model
+            target_optimizer.zero_grad()
+            target_loss = target_criterion(baseline, torch.Tensor([total_return]).squeeze().to(device))
+            target_loss.backward()
+            target_optimizer.step()
+        for param in policy_model.parameters():
+            print(param)
         get_sequence(game, policy_model, device)
 
 
