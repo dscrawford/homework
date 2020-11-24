@@ -1,0 +1,15 @@
+ALTER TABLE Customer ADD CONSTRAINT fkCustCC FOREIGN KEY (credit_no) REFERENCES Credit_Card(credit_no);
+ALTER TABLE Employee ADD CONSTRAINT fkEmpDept FOREIGN KEY (department_name) REFERENCES Department(department_name);
+ALTER TABLE Driver ADD CONSTRAINT fkDriverCar FOREIGN KEY (lisc_plate_no) REFERENCES Car(lisc_plate_no);
+ALTER TABLE Driver ADD CONSTRAINT fkDriverDept FOREIGN KEY (department_name) REFERENCES Department(department_name);
+ALTER TABLE Ride ADD CONSTRAINT fkRideDriver FOREIGN KEY (driver_SSN) REFERENCES Driver(driver_SSN);
+ALTER TABLE Ride ADD CONSTRAINT fkRideCust FOREIGN KEY (cust_phone_no) REFERENCES Customer(phone_no);
+ALTER TABLE Pool ADD CONSTRAINT fkPoolDriver FOREIGN KEY (driver_SSN) REFERENCES Driver(driver_SSN);
+ALTER TABLE Department ADD CONSTRAINT fkDeptComp FOREIGN KEY (company_name) REFERENCES Company(company_name);
+ALTER TABLE Department ADD CONSTRAINT fkDeptMgr FOREIGN KEY (manager_SSN) REFERENCES Employee(employee_SSN);
+ALTER TABLE Company ADD CONSTRAINT fkCompDept FOREIGN KEY (main_dept_name) REFERENCES Department(department_name);
+ALTER TABLE Driver_Languages ADD CONSTRAINT fkLangDriver FOREIGN KEY (driver_SSN) REFERENCES Driver(driver_SSN);
+ALTER TABLE Review ADD CONSTRAINT fkReviewDriver FOREIGN KEY (driver_SSN) REFERENCES Driver(driver_SSN);
+ALTER TABLE Review ADD CONSTRAINT fkReviewCust FOREIGN KEY (cust_phone_no) REFERENCES Customer(phone_no);
+ALTER TABLE Customer_Pool ADD CONSTRAINT fkCPCust FOREIGN KEY (cust_phone_no) REFERENCES Customer(phone_no);
+ALTER TABLE Customer_Pool ADD CONSTRAINT fkCPPool FOREIGN KEY (start_time, driver_SSN) REFERENCES Pool(start_time, driver_SSN);

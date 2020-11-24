@@ -25,7 +25,8 @@ CREATE TABLE Customer
   l_name INT NOT NULL,
   phone_no INT NOT NULL,
   credit_no INT NOT NULL,
-  PRIMARY KEY (phone_no)
+  PRIMARY KEY (phone_no),
+  FOREIGN KEY (credit_no) REFERENCES Credit_Card(credit_no)
 );
 
 CREATE TABLE Employee
@@ -36,7 +37,8 @@ CREATE TABLE Employee
   employee_SSN INT NOT NULL,
   salary INT NOT NULL,
   department_name VARCHAR(20) NOT NULL,
-  PRIMARY KEY (employee_SSN)
+  PRIMARY KEY (employee_SSN),
+  FOREIGN KEY (department_name) REFERENCES Department(department_name)
 );
 
 CREATE TABLE Driver
@@ -82,7 +84,9 @@ CREATE TABLE Department
   city VARCHAR(20) NOT NULL,
   company_name VARCHAR(20) NOT NULL,
   manager_SSN INT NOT NULL,
-  PRIMARY KEY (department_name)
+  PRIMARY KEY (department_name),
+  FOREIGN KEY (company_name) REFERENCES Company(company_name),
+  FOREIGN KEY (manager_SSN) REFERENCES Employee(employee_SSN)
 );
 
 CREATE TABLE Company
@@ -90,14 +94,16 @@ CREATE TABLE Company
   company_name VARCHAR(20) NOT NULL,
   phone_no INT NOT NULL,
   main_dept_name VARCHAR(20) NOT NULL,
-  PRIMARY KEY (company_name)
+  PRIMARY KEY (company_name),
+  FOREIGN KEY (main_dept_name) REFERENCES Department(department_name)
 );
 
 CREATE TABLE Driver_Languages
 (
   language_spoken INT NOT NULL,
   driver_SSN INT NOT NULL,
-  PRIMARY KEY (language_spoken, driver_SSN)
+  PRIMARY KEY (language_spoken, driver_SSN),
+  FOREIGN KEY (driver_SSN) REFERENCES Driver(driver_SSN)
 );
 
 CREATE TABLE Review
@@ -106,7 +112,9 @@ CREATE TABLE Review
   driver_review INT NOT NULL,
   driver_SSN INT NOT NULL,
   cust_phone_no INT NOT NULL,
-  PRIMARY KEY (driver_SSN, cust_phone_no)
+  PRIMARY KEY (driver_SSN, cust_phone_no),
+  FOREIGN KEY (driver_SSN) REFERENCES Driver(driver_SSN),
+  FOREIGN KEY (cust_phone_no) REFERENCES Customer(phone_no)
 );
 
 CREATE TABLE Customer_Pool
@@ -116,5 +124,7 @@ CREATE TABLE Customer_Pool
   phone_no INT NOT NULL,
   start_time DATE NOT NULL,
   driver_SSN INT NOT NULL,
-  PRIMARY KEY (phone_no, start_time, driver_SSN)
+  PRIMARY KEY (phone_no, start_time, driver_SSN),
+  FOREIGN KEY (phone_no) REFERENCES Customer(phone_no),
+  FOREIGN KEY (start_time, driver_SSN) REFERENCES Pool(start_time, driver_SSN)
 );

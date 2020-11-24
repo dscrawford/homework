@@ -4,3 +4,6 @@
 [submodule "Senior/Fall_2019/CS6375/MachineLearningProject"]
 	path = Senior/Fall_2019/CS6375/MachineLearningProject
 	url = git@github.com:dscrawford/MachineLearningProject.git
+[submodule "Graduate/Fall_2020/CS6364/CS6364Project"]
+	path = Graduate/Fall_2020/CS6364/CS6364Project
+	url = git@github.com:dscrawford/CS6364Project.git
