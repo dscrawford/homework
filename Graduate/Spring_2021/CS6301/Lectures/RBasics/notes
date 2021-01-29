@@ -1,0 +1,50 @@
+how to apply operations (functions) on these structures
+  - NOTE: loops (for, while, etc) are bad
+      cannot be parallelized easily
+      
+31 rows -> observations -> data points
+6 columns -> variables -> attributes -> features
+data frame -> a set of named columns
+
+if you have a data frame, for each column
+  - check for null values
+  - data distribution
+  - normalize before proceeding further
+  
+  
+if you have sufficiently large number of data points (obervactions), then every
+feature will tend to become a normal (Gaussian, bell shaped) distribution
+
+# 50 students, GPA
+# 100 people, weights
+
+In R -> the NULL is called NA
+
+1-D -> vector
+2-D -> matrix, dataframe (friendlier API)
+list -> can have any number of elements of any type
+
+list elements can be accesses by double square brackets
+list$elementName
+
+how to loop through elements
+ 1. Loop (for, while)
+ 2. Apply family -> more efficient alternatives to traditional loops
+      sapply (vector) # returns a vector
+      lapply (list) # returns a list
+      apply (matrix) # returns a matrix
+      all arguments are as follows: 
+      
+matrix:
+  order(m$column) -> sorted indices
+  
+if you want to see the code (C) behind a commend, simply type command name
+
+4. how to write custom (user-defined) functions, and use them in r-family
+
+lapply applies a function to every element of the list
+  if the element is a vector, you can apply any vector function
+  
+write a custom function for a list:
+  if list element is a vector: give me the mean
+  if list element is a matrix: give me the mean of each row
