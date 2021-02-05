@@ -48,3 +48,11 @@ lapply applies a function to every element of the list
 write a custom function for a list:
   if list element is a vector: give me the mean
   if list element is a matrix: give me the mean of each row
+  
+
+strengths of R:
+  1. vectorized data structures and functions
+  2. easy plot
+    type, legend, col, lwd
+
+rnorm - sample randomly from the normal distribution (mean = 0, sd = 1)

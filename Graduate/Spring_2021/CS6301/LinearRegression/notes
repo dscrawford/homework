@@ -1,0 +1,66 @@
+Y = b0 + b1 * x1 + b2 * x2 + ...
+
+hypothesis is that x1 and x2 are important
+
+house price = b0 + b1 * (Area) + b2 * (no of bedrooms) + b3 * (avg house price)
+
+  hypothesis: (Area), (no of bedrooms), (avg house price)
+    -> Ha
+    -> H1
+    -> positive hypothesis
+    
+  null hypothesis:
+    -> Area is not useful
+    -> (no of bedrooms) is not useful
+    
+  e.g. positive: to predict underground oil, surface humidity is important
+       null: surface humidity is not important
+       
+Task: To prove null hypothesis wrong
+
+
+t-values: (b_i - 0) / (Se(b_i))
+want t-value to be high, or very precise!
+
+
+GPA = b0 + b1 * (attendance)
+
+Important things:
+
+  1. Coefficient estimate and p-value analysis
+      point estimate of b1 -1
+      se of b1 -2
+      t-statistic by 1/2
+      p-value (A high p-value indicates your results are by chance, no correlation)
+        if p-value is very small (p < 0.05 or lower) -> you can reject null hypothesis, else you cannot
+    
+  2. Residuals (error)
+    1st point: actual (y1) predicted (y1^) -> abs diff residual 1
+    2nd point: actual (y2) predicted (y2^) -> abs diff residual 2
+    
+    what is residual or ss of residual
+  
+  3. Anaysis of Variance
+    how much variance is being explained by the model
+    
+  4. Comparison between a model with no variables and my model
+      GPA = b0 + b1 (null model)
+      GPA according to my model
+      
+      F-statistic = performance of my model / performance of null model
+                  = (variance explained by model) / variance by null mode
+                  
+      feature selection
+          x1, x3, x5        F1
+          null model
+          
+          
+          x2, x4, x5        F2
+          null model
+          
+R**2
+      -> correlation between model output and true values
+      
+      
+--
+if you keep on adding variables (attributes/features), then R**2 will continue increasing by small values.

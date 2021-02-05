@@ -174,3 +174,10 @@ abline(v=5, lty=2)
 plot(1:10, type="o", col="red", lwd=3)
 abline(v=5, lty=2)
 
+# UTD Students have a mean GPA = 3.0 and SD = 0.6
+sample <- rnorm(1000000, 3.0, 0.6)
+hist(sample, breaks=100)
+
+plot(x=rnorm(500), y=rnorm(500), xlab="x", ylab="y", main="Bi-variate Norm. Distr.")
+
+plot(iris[,-5], col=iris[,5], main="Iris Plot", legend = TRUE)
