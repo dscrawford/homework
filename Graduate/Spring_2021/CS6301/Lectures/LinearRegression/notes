@@ -64,3 +64,68 @@ R**2
       
 --
 if you keep on adding variables (attributes/features), then R**2 will continue increasing by small values.
+
+
+Single variable regression:
+  y ~ x1
+      x2
+      
+t1 = t-statistic
+p-value: how likely is value t1 under H0 (null hypothesis)
+        - very small
+        - significance level = 0.05
+----
+Multiple Linear Regression
+  y ~ x1 + x2 + x3
+
+  - for each feature, how important is it alone
+        p-value for each different value
+  - how good is the total model as compared to null model
+      F-statistic
+  - R2 statistic = E / T
+      T = total variance in y
+      E = explained variance by my model
+      
+  By adding a variable...
+    - making model "heavy" by adding another attribute
+    - does it really help?
+    - is there a significant increase in R2 by adding variable x4
+    
+    
+Residual = |actual value - predicted value|
+predicted = 34.55 - 0.95 * lstat
+
+prob of t-value under H0 is very very lower (10-16) -> reject null
+
+F-statistic is 601.6 x better than the null model
+R2 ->
+adj R2 -> we look at R2 + number of predictors
+
+what assumptions do we make in this chapter?
+1. linear relationship (strong)
+2. if I choose n variables, then I think all n are important
+    check with H0, try to find evidence against it
+3. all attributes (predictors) are independent of each other.
+
+
+Housing Market Dataset?
+  how good can your model get?
+  
+apply a model for entire DFW, model will not be very good in terms of R2
+
+local models:
+  Highland Park
+  University Park
+  
+another one:
+  Frisco
+  Prosper
+  
+One model fits all may not be valid
+
+----------------------
+
+R started as an open project
+lots of contributions, unwieldy (packages that may be inconsistent with each other)
+
+aim: is a cleaner, easier to understand subsystem

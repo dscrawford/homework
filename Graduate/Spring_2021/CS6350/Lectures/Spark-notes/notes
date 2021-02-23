@@ -1,0 +1,25 @@
+Spark
+	- RDD (form of distributed shared memory) -> bulk transformation, no edits
+	- two type of operations: (judicious use of memory)
+	      transformations - lazy
+	      actions -> it goes back to the last action and performs all the trasnformation, outputs the result, frees up memory
+	      	      	 frees up memory
+	- pair RDD
+	  have 2 values (key, value)
+	       	 	(key, [value1, value2, ...])
+
+	- words -> (word, 1)
+
+-------
+
+Aim: Inverted index using MR
+
+D1
+D2
+...
+D100
+
+If I type the word "w" -> I should get the most relevant documents to w
+   "UT Dallas" -> all documents that mention UT Dallas
+       	       -> rank the results
+

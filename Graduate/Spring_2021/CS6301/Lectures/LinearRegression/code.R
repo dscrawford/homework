@@ -1,3 +1,5 @@
+require(ISLR)
+require(MASS)
 data()
 View(Boston)
 Boston
@@ -37,3 +39,20 @@ summary(lm.fit)
 
 lm.fit = lm(medv~lstat + tax + crim, data=Boston)
 summary(lm.fit)
+
+lm.fit.1=lm(medv~lstat + tax, data=Boston)
+summary(lm.fit.1)
+
+lm.fit.total=lm(medv~.-age, data=Boston)
+summary(lm.fit.total)
+
+plot(Boston$lstat, Boston$medv)
+abline(lm.fit.total, lwd=3, col="red")
+
+
+lm.fit=lm(medv~lstat,data=Boston)
+lm.fit2=lm(medv~rm+I(lstat^2), data=Boston)
+
+lm.fit5=lm(medv~poly(lstat,5), data=Boston)
+
+summary(lm.fit5)

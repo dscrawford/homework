@@ -1,0 +1,48 @@
+speed of disk lookup vs memory search
+      - which one is faster and by what order of magnitude
+
+      page fault -> data is not in memory, i have to do disk lookup and transfer data back to memory
+      	   - go to disk
+	   - search for data (seek) in unindexed file system
+	   - assemble the data
+	   - send it back to the memory
+
+-> I want a mapreduce that can run in memory as far as possible
+   reason: disk lookups are inefficient, HDFS lookups are even less efficient
+
+
+2 ways of creation -> using an existing collection (list, array, etc)
+       	  	      reading from disk
+
+once created, they cannot be overwritten (read-only structures)
+
+two type of operations can be performed on it
+    - transformations (LAZY)
+    - actions (immediate)
+
+fault tolerance is provided by lineage tracking
+      -> i only need memory for a short duration
+      	 5 operations
+	   -> i can get them done in 5ms
+
+
+Hadoop MapReduce
+Scala -> higher order programming language
+      -> it has higher order functionst that take other functions as input
+
+Efficient mapreduce
+	  -> In-memory computing using RDD
+	  -> RDD: can only be builk transformed, read-only, support only 2 type of operations (T & A)
+	  -> T are lazy -> this helps us with resource and memory management
+	  -> A are immediate
+	  -> sc is a connection to the cluster
+	  -> common transformations e.g. map, reduce, reduceByKey, filter
+
+	     reduceByKey((k, ...))
+	  -> RDDs cannot be changed, they can only be transformed
+	  -> actions:
+		take
+		collect
+		reduce
+		saveAs
+		count

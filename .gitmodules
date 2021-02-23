@@ -7,3 +7,9 @@
 [submodule "Graduate/Fall_2020/CS6364/CS6364Project"]
 	path = Graduate/Fall_2020/CS6364/CS6364Project
 	url = git@github.com:dscrawford/CS6364Project.git
+[submodule "Graduate/Spring_2021/CS6301/PADSAssignments"]
+	path = Graduate/Spring_2021/CS6301/PADSAssignments
+	url = git@github.com:dscrawford/PADSAssignments.git
+[submodule "Graduate/Spring_2021/CS6350/CS6350_Assignments"]
+	path = Graduate/Spring_2021/CS6350/CS6350_Assignments
+	url = git@github.com:nich227/CS6350_Assignments.git
