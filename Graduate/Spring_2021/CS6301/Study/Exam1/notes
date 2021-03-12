@@ -1,0 +1,36 @@
+# R Questions #
+the NULL is called NA
+1-D -> vector
+2-D -> matrix, dataframe (friendlier API)
+list -> can have any number of elements of any type
+
+list elements can be accesses by double square brackets
+list$elementName
+
+how to loop through elements
+ 1. Loop (for, while)
+ 2. Apply family -> more efficient alternatives to traditional loops
+      sapply (vector) # returns a vector
+      lapply (list) # returns a list
+      apply (matrix) # returns a matrix
+
+matrix:
+  order(m$column) -> sorted indices
+
+if you want to see the code (C) behind a commend, simply type command name
+
+4. how to write custom (user-defined) functions, and use them in r-family
+
+lapply applies a function to every element of the list
+  if the element is a vector, you can apply any vector fu
+
+write a custom function for a list:
+  if list element is a vector: give me the mean
+  if list element is a matrix: give me the mean of each row
+
+strengths of R:
+  1. vectorized data structures and functions
+  2. easy plot
+    type, legend, col, lwd
+
+

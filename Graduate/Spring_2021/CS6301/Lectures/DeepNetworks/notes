@@ -1,0 +1,12 @@
+Deep vs Shallow
+(Tall & Thing) vs (Short & Fat)
+
+      Practically, deep networks are not beter
+      		   - vanishing gradients
+		   - number of parameters
+		   - slower training
+      to rememdy:
+		- activation function as ReLU
+		- dropout
+		- adaptive learning rate
+		- better numerical method than gradient descent
