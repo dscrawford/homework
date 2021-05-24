@@ -22,7 +22,7 @@ Collection of all homeworks done at UTD
 		- CS 4349 - Advanced Algorithm Design
 		- CS 4384 - Automata Theory
 		- ECS 3390 - Professional and Technical Communication
-	- Spring_2018
+	- Spring_2019
 		- CS 4341 - Digital Logic and Computer Design
 		- CS 4347 - Introduction to Database Systems
 		- CS 4361 - Computer Graphics
@@ -30,6 +30,17 @@ Collection of all homeworks done at UTD
 	- Fall_2019
 		- CS 6375 - Machine Learning
 		- CS 6313 - Statistical Methods in Data Science
+	- Spring_2020
+		- CS 6320 - Natural Language Processing
+		- CS 6347 - Probabilistic Graphical Models
+- Graduate
+	- Fall_2020
+		- CS 6301 - Convolutional Neural Networks
+		- CS 6360 - Database Systems
+		- CS 6364 - Artificial Intelligence
+	- Spring_2021
+		- CS 6301 - Practical Aspects of Data Science
+		- CS 6350 - Big Data
 # Class Descriptions
 *\* - interesting projects*
 
